@@ -1,0 +1,175 @@
+:root {
+    --primary-color: #4f46e5;
+    --primary-hover: #4338ca;
+    --success-color: #10b981;
+    --success-hover: #059669;
+    --danger-color: #ef4444;
+    --danger-hover: #dc2626;
+    --bg-color: #f3f4f6;
+    --card-bg: #ffffff;
+    --text-main: #1f2937;
+    --text-sub: #6b7280;
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.container {
+    background-color: var(--card-bg);
+    width: 100%;
+    max-width: 400px;
+    border-radius: 20px;
+    box-shadow: var(--shadow);
+    padding: 30px;
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+header h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+    color: var(--text-main);
+}
+
+#current-time {
+    font-size: 2.5rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 30px;
+    font-variant-numeric: tabular-nums;
+}
+
+.user-input-group {
+    margin-bottom: 30px;
+    text-align: left;
+}
+
+.user-input-group label {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--text-sub);
+    margin-bottom: 8px;
+}
+
+.user-input-group input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+    outline: none;
+}
+
+.user-input-group input:focus {
+    border-color: var(--primary-color);
+}
+
+.button-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.action-btn {
+    border: none;
+    border-radius: 15px;
+    padding: 20px 10px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    transition: transform 0.1s, opacity 0.2s;
+}
+
+.action-btn:active {
+    transform: scale(0.95);
+}
+
+.action-btn .icon {
+    font-size: 1.5rem;
+}
+
+.check-in {
+    background: linear-gradient(135deg, var(--success-color), var(--success-hover));
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+}
+
+.check-out {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+    /* Changed to primary for better contrast or use danger if preferred */
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    /* Orange for clock out */
+    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+}
+
+.status-message {
+    min-height: 24px;
+    font-size: 0.9rem;
+    margin-top: 15px;
+    color: var(--text-sub);
+}
+
+.status-message.success {
+    color: var(--success-color);
+}
+
+.status-message.error {
+    color: var(--danger-color);
+}
+
+footer {
+    margin-top: 40px;
+    border-top: 1px solid #e5e7eb;
+    padding-top: 20px;
+    font-size: 0.8rem;
+    color: var(--text-sub);
+    text-align: left;
+}
+
+details summary {
+    cursor: pointer;
+    margin-bottom: 10px;
+}
+
+.settings {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.settings input {
+    padding: 8px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+}
+
+.settings button {
+    padding: 8px;
+    background-color: var(--text-main);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
