@@ -16,36 +16,15 @@
             <p id="current-time">--:--</p>
         </header>
 
-        <main>
-            <div class="user-input-group">
-                <label for="employee-id">社員コード</label>
-                <input type="text" id="employee-id" placeholder="社員コードを入力" inputmode="numeric">
+        <details>
+            <summary>設定（管理者用）</summary>
+            <div class="settings">
+                <label for="gas-url">GAS WebアプリURL</label>
+                <input type="text" id="gas-url"
+                    placeholder="https://script.google.com/macros/s/AKfycbxR4-8tLtoz-mKMWh-_pQOep839haoJommB9c5wepRpJ3THmYrvk9rTR-gFbq5Ez-bB7g/exec">
+                <button id="save-settings">保存</button>
             </div>
-
-            <div class="button-group">
-                <button id="clock-in-btn" class="action-btn check-in">
-                    <span class="icon">☀️</span>
-                    出勤
-                </button>
-                <button id="clock-out-btn" class="action-btn check-out">
-                    <span class="icon">🌙</span>
-                    退勤
-                </button>
-            </div>
-
-            <div id="status-message" class="status-message"></div>
-        </main>
-
-        <footer>
-            <details>
-                <summary>設定（管理者用）</summary>
-                <div class="settings">
-                    <label for="gas-url">GAS WebアプリURL</label>
-                    <input type="text" id="gas-url"
-                        placeholder="https://script.google.com/macros/s/AKfycbwL3SGjNkOCZLsu7L4tMVHf0QE2U8tQnpA3gfkUEKY1BW_picbJ1677EHzACfnzsWbE7A/exec">
-                    <button id="save-settings">保存</button>
-                </div>
-            </details>
+        </details>
         </footer>
     </div>
     <script src="script.js"></script>

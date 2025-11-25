@@ -6,6 +6,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusMessage = document.getElementById('status-message');
     const gasUrlInput = document.getElementById('gas-url');
     const saveSettingsBtn = document.getElementById('save-settings');
+    const clockInTimeInput = document.getElementById('clock-in-time');
+    const clockOutTimeInput = document.getElementById('clock-out-time');
+    const remarksInput = document.getElementById('remarks');
 
     // 設定のロード
     const savedGasUrl = localStorage.getItem('attendance_gas_url');
@@ -57,10 +60,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             // GASへの送信データ
+            let timestamp;
+            let targetTimeInput;
+
+            if (type === 'in') {
+                targetTimeInput = clockInTimeInput;
+            } else {
+                targetTimeInput = clockOutTimeInput;
+            }
+
+            if (targetTimeInput && targetTimeInput.value) {
+                timestamp = new Date(targetTimeInput.value).toISOString();
+            } else {
+                timestamp = new Date().toISOString();
+            }
+
             const data = {
                 action: type, // 'in' or 'out'
                 employeeId: employeeId,
-                timestamp: new Date().toISOString()
+                timestamp: timestamp,
+                remarks: remarksInput.value.trim()
             };
 
             // no-corsモードで送信
@@ -75,6 +94,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const actionText = type === 'in' ? '出勤' : '退勤';
             showMessage(`${actionText}を記録しました！`, 'success');
+
+            // 入力値をクリア
+            if (targetTimeInput) targetTimeInput.value = '';
+            remarksInput.value = '';
 
         } catch (error) {
             console.error('Error:', error);
