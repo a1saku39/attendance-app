@@ -58,28 +58,30 @@ function doPost(e) {
     if (!logSheet) {
       // 部署別シートがない場合は作成
       logSheet = ss.insertSheet(departmentSheetName);
-      logSheet.appendRow(['日時', '社員コード', '名前', '種別', '備考', '詳細時刻']);
+      logSheet.appendRow(['日時', '社員コード', '名前', '種別', '備考']);
       debugSheet.appendRow([new Date(), '部署別シート「' + departmentSheetName + '」を新規作成しました']);
     } else if (logSheet.getLastRow() === 0) {
-      logSheet.appendRow(['日時', '社員コード', '名前', '種別', '備考', '詳細時刻']);
+      logSheet.appendRow(['日時', '社員コード', '名前', '種別', '備考']);
     }
     
     // 3. 全体の打刻データにも記録（オプション）
     var allLogSheet = ss.getSheetByName('打刻データ_全体');
     if (!allLogSheet) {
       allLogSheet = ss.insertSheet('打刻データ_全体');
-      allLogSheet.appendRow(['日時', '社員コード', '名前', '部署', '種別', '備考', '詳細時刻']);
+      allLogSheet.appendRow(['日時', '社員コード', '名前', '部署', '種別', '備考']);
       debugSheet.appendRow([new Date(), '全体打刻データシートを新規作成しました']);
     } else if (allLogSheet.getLastRow() === 0) {
-      allLogSheet.appendRow(['日時', '社員コード', '名前', '部署', '種別', '備考', '詳細時刻']);
+      allLogSheet.appendRow(['日時', '社員コード', '名前', '部署', '種別', '備考']);
     }
     
     // 日本時間のフォーマット
-    var formattedDate = Utilities.formatDate(timestamp, "Asia/Tokyo", "yyyy/MM/dd HH:mm:ss");
+    var days = ['日', '月', '火', '水', '木', '金', '土'];
+    var dayOfWeek = days[timestamp.getDay()];
+    var formattedDate = Utilities.formatDate(timestamp, "Asia/Tokyo", "yyyy/MM/dd") + ' (' + dayOfWeek + ') ' + Utilities.formatDate(timestamp, "Asia/Tokyo", "HH:mm:ss");
     var actionText = action === 'in' ? '出勤' : '退勤';
     
     // 部署別シート用のデータ
-    var recordData = [formattedDate, employeeId, username, actionText, remarks, timestamp.toString()];
+    var recordData = [formattedDate, employeeId, username, actionText, remarks];
     debugSheet.appendRow([new Date(), '記録データ: ' + JSON.stringify(recordData)]);
     
     // 部署別シートに記録
@@ -87,7 +89,7 @@ function doPost(e) {
     debugSheet.appendRow([new Date(), '部署別シート「' + departmentSheetName + '」に記録完了']);
     
     // 全体シート用のデータ（部署情報を含む）
-    var allRecordData = [formattedDate, employeeId, username, department, actionText, remarks, timestamp.toString()];
+    var allRecordData = [formattedDate, employeeId, username, department, actionText, remarks];
     allLogSheet.appendRow(allRecordData);
     debugSheet.appendRow([new Date(), '全体シートに記録完了']);
     

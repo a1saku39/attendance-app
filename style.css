@@ -138,7 +138,6 @@ header h1 {
 
 .action-btn .icon {
     font-size: 2.2rem;
-    /* Increased icon size */
 }
 
 .check-in {
@@ -148,23 +147,41 @@ header h1 {
 
 .check-out {
     background: linear-gradient(135deg, #f59e0b, #d97706);
-    /* Orange */
     box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
 }
 
 .status-message {
-    min-height: 24px;
-    font-size: 0.9rem;
-    margin-top: 15px;
-    color: var(--text-sub);
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    z-index: 1000;
+    padding: 12px 24px;
+    border-radius: 50px;
+    background-color: var(--card-bg);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    font-weight: 600;
+    font-size: 1rem;
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .status-message.success {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
     color: var(--success-color);
+    border: 1px solid var(--success-color);
 }
 
 .status-message.error {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
     color: var(--danger-color);
+    border: 1px solid var(--danger-color);
 }
 
 footer {
