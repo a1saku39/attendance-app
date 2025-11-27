@@ -55,43 +55,48 @@ function doPost(e) {
     var departmentSheetName = '打刻_' + department;
     var logSheet = ss.getSheetByName(departmentSheetName);
     
+    // 新しいヘッダー定義: A:日にち, B:社員コード, C:名前, D:種別出勤, E:出勤時刻, F:種別退勤, G:退勤時刻, H:備考
     if (!logSheet) {
       // 部署別シートがない場合は作成
       logSheet = ss.insertSheet(departmentSheetName);
-      logSheet.appendRow(['日時', '社員コード', '名前', '種別', '備考']);
+      logSheet.appendRow(['日にち', '社員コード', '名前', '種別出勤', '出勤時刻', '種別退勤', '退勤時刻', '備考']);
       debugSheet.appendRow([new Date(), '部署別シート「' + departmentSheetName + '」を新規作成しました']);
     } else if (logSheet.getLastRow() === 0) {
-      logSheet.appendRow(['日時', '社員コード', '名前', '種別', '備考']);
+      logSheet.appendRow(['日にち', '社員コード', '名前', '種別出勤', '出勤時刻', '種別退勤', '退勤時刻', '備考']);
     }
     
-    // 3. 全体の打刻データにも記録（オプション）
+    // 日付と時刻のフォーマット
+    var dateStr = Utilities.formatDate(timestamp, "Asia/Tokyo", "yyyy/MM/dd");
+    var timeStr = Utilities.formatDate(timestamp, "Asia/Tokyo", "HH:mm");
+    var actionText = action === 'in' ? '出勤' : '退勤';
+    
+    // 行の更新または追加
+    updateOrAppendRow(logSheet, {
+      date: dateStr,
+      id: employeeId,
+      name: username,
+      action: action,
+      time: timeStr,
+      remarks: remarks
+    });
+    
+    debugSheet.appendRow([new Date(), '部署別シート「' + departmentSheetName + '」に記録完了']);
+    
+    // 3. 全体の打刻データにも記録（バックアップとして従来の形式で追記）
     var allLogSheet = ss.getSheetByName('打刻データ_全体');
     if (!allLogSheet) {
       allLogSheet = ss.insertSheet('打刻データ_全体');
       allLogSheet.appendRow(['日時', '社員コード', '名前', '部署', '種別', '備考']);
-      debugSheet.appendRow([new Date(), '全体打刻データシートを新規作成しました']);
     } else if (allLogSheet.getLastRow() === 0) {
       allLogSheet.appendRow(['日時', '社員コード', '名前', '部署', '種別', '備考']);
     }
     
-    // 日本時間のフォーマット
+    // 全体シートは従来のログ形式を維持
     var days = ['日', '月', '火', '水', '木', '金', '土'];
     var dayOfWeek = days[timestamp.getDay()];
-    var formattedDate = Utilities.formatDate(timestamp, "Asia/Tokyo", "yyyy/MM/dd") + ' (' + dayOfWeek + ') ' + Utilities.formatDate(timestamp, "Asia/Tokyo", "HH:mm:ss");
-    var actionText = action === 'in' ? '出勤' : '退勤';
-    
-    // 部署別シート用のデータ
-    var recordData = [formattedDate, employeeId, username, actionText, remarks];
-    debugSheet.appendRow([new Date(), '記録データ: ' + JSON.stringify(recordData)]);
-    
-    // 部署別シートに記録
-    logSheet.appendRow(recordData);
-    debugSheet.appendRow([new Date(), '部署別シート「' + departmentSheetName + '」に記録完了']);
-    
-    // 全体シート用のデータ（部署情報を含む）
-    var allRecordData = [formattedDate, employeeId, username, department, actionText, remarks];
+    var formattedFullDate = Utilities.formatDate(timestamp, "Asia/Tokyo", "yyyy/MM/dd") + ' (' + dayOfWeek + ') ' + Utilities.formatDate(timestamp, "Asia/Tokyo", "HH:mm:ss");
+    var allRecordData = [formattedFullDate, employeeId, username, department, actionText, remarks];
     allLogSheet.appendRow(allRecordData);
-    debugSheet.appendRow([new Date(), '全体シートに記録完了']);
     
     // レスポンス作成
     var output = ContentService.createTextOutput(JSON.stringify({
@@ -99,7 +104,7 @@ function doPost(e) {
       username: username,
       department: department,
       action: actionText,
-      timestamp: formattedDate
+      timestamp: formattedFullDate
     }));
     output.setMimeType(ContentService.MimeType.JSON);
     return output;
@@ -122,5 +127,61 @@ function doPost(e) {
     }));
     output.setMimeType(ContentService.MimeType.JSON);
     return output;
+  }
+}
+
+// 指定された日付と社員コードの行を探して更新、なければ新規追加する関数
+function updateOrAppendRow(sheet, data) {
+  var lastRow = sheet.getLastRow();
+  var foundRow = -1;
+  
+  // データがある場合、既存の行を検索（直近100行程度を検索対象とする）
+  if (lastRow > 1) {
+    var startRow = Math.max(2, lastRow - 100);
+    var numRows = lastRow - startRow + 1;
+    var values = sheet.getRange(startRow, 1, numRows, 2).getValues(); // A列(日付)とB列(コード)を取得
+    
+    // 下から上に検索
+    for (var i = values.length - 1; i >= 0; i--) {
+      // 日付と社員コードが一致するか確認
+      // シートの日付がDateオブジェクトの場合は文字列に変換して比較
+      var sheetDate = values[i][0];
+      if (sheetDate instanceof Date) {
+        sheetDate = Utilities.formatDate(sheetDate, "Asia/Tokyo", "yyyy/MM/dd");
+      }
+      
+      if (String(sheetDate) === String(data.date) && String(values[i][1]) === String(data.id)) {
+        foundRow = startRow + i;
+        break;
+      }
+    }
+  }
+  
+  if (foundRow > 0) {
+    // 既存の行を更新
+    if (data.action === 'in') {
+      sheet.getRange(foundRow, 4).setValue('出勤'); // D列: 種別出勤
+      sheet.getRange(foundRow, 5).setValue(data.time); // E列: 出勤時刻
+      sheet.getRange(foundRow, 8).setValue(data.remarks); // H列: 備考
+    } else if (data.action === 'out') {
+      sheet.getRange(foundRow, 6).setValue('退勤'); // F列: 種別退勤
+      sheet.getRange(foundRow, 7).setValue(data.time); // G列: 退勤時刻
+      // 退勤時も備考を更新（上書き）
+      sheet.getRange(foundRow, 8).setValue(data.remarks); // H列: 備考
+    }
+  } else {
+    // 新規行を追加
+    // A:日にち, B:社員コード, C:名前, D:種別出勤, E:出勤時刻, F:種別退勤, G:退勤時刻, H:備考
+    var rowData = [
+      data.date,
+      data.id,
+      data.name,
+      data.action === 'in' ? '出勤' : '',
+      data.action === 'in' ? data.time : '',
+      data.action === 'out' ? '退勤' : '',
+      data.action === 'out' ? data.time : '',
+      data.remarks
+    ];
+    sheet.appendRow(rowData);
   }
 }
