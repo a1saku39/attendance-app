@@ -88,6 +88,15 @@ header h1 {
     border-color: var(--primary-color);
 }
 
+/* Specific styles for Employee ID to make it larger */
+#employee-id {
+    font-size: 1.8rem;
+    padding: 15px;
+    letter-spacing: 0.1em;
+    font-weight: 700;
+    text-align: center;
+}
+
 /* New Layout Styles */
 .attendance-actions {
     display: flex;
