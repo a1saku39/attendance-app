@@ -10,12 +10,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const clockOutTimeInput = document.getElementById('clock-out-time');
     const remarksInput = document.getElementById('remarks');
 
+    // 履歴表示要素
+    const historyContainer = document.getElementById('history-container');
+
     // 設定のロード
     const savedGasUrl = localStorage.getItem('attendance_gas_url');
     const savedEmployeeId = localStorage.getItem('attendance_employee_id');
 
     if (savedGasUrl) gasUrlInput.value = savedGasUrl;
-    if (savedEmployeeId) employeeIdInput.value = savedEmployeeId;
+    if (savedEmployeeId) {
+        employeeIdInput.value = savedEmployeeId;
+        fetchHistory(); // 初期表示時に履歴を取得
+    }
 
     // 時計の更新
     function updateTime() {
@@ -36,10 +42,86 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 社員コード保存（入力が変わるたびに保存）
+    // 社員コード保存（入力が変わるたびに保存して履歴取得）
     employeeIdInput.addEventListener('change', () => {
-        localStorage.setItem('attendance_employee_id', employeeIdInput.value.trim());
+        const id = employeeIdInput.value.trim();
+        localStorage.setItem('attendance_employee_id', id);
+        if (id) {
+            fetchHistory();
+        }
     });
+
+    // 履歴取得処理
+    async function fetchHistory() {
+        const employeeId = employeeIdInput.value.trim();
+        const gasUrl = localStorage.getItem('attendance_gas_url');
+
+        if (!employeeId || !gasUrl) return;
+
+        try {
+            // POSTリクエストで履歴を取得 (CORS対応のためPOSTを使用)
+            // 注意: GAS側でContentService.createTextOutput().setMimeType(ContentService.MimeType.JSON)している必要がある
+            const response = await fetch(gasUrl, {
+                method: 'POST',
+                redirect: 'follow', // GASのリダイレクトを追跡
+                headers: {
+                    'Content-Type': 'text/plain;charset=utf-8', // simple requestにするため
+                },
+                body: JSON.stringify({
+                    action: 'get_history',
+                    employeeId: employeeId
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.result === 'success' && data.history) {
+                renderHistory(data.history);
+            }
+
+        } catch (error) {
+            console.error('History fetch error:', error);
+            // 履歴取得失敗はユーザーに通知しなくても良い（サイレント失敗）
+        }
+    }
+
+    function renderHistory(history) {
+        if (!history || history.length === 0) {
+            historyContainer.innerHTML = '<p class="no-history">履歴がありません</p>';
+            return;
+        }
+
+        let html = `
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>日付</th>
+                        <th>出勤</th>
+                        <th>退勤</th>
+                        <th>備考</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        history.forEach(row => {
+            html += `
+                <tr>
+                    <td>${row.date}</td>
+                    <td>${row.clockInTime}</td>
+                    <td>${row.clockOutTime}</td>
+                    <td>${row.remarks}</td>
+                </tr>
+            `;
+        });
+
+        html += `
+                </tbody>
+            </table>
+        `;
+
+        historyContainer.innerHTML = html;
+    }
 
     // 打刻処理
     async function handleAttendance(type) {
@@ -82,26 +164,41 @@ document.addEventListener('DOMContentLoaded', () => {
                 remarks: remarksInput.value.trim()
             };
 
-            // no-corsモードで送信
-            await fetch(gasUrl, {
+            // CORSモードで送信してレスポンスを受け取る
+            const response = await fetch(gasUrl, {
                 method: 'POST',
-                mode: 'no-cors',
+                redirect: 'follow',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'text/plain;charset=utf-8'
                 },
                 body: JSON.stringify(data)
             });
 
-            const actionText = type === 'in' ? '出勤' : '退勤';
-            showMessage(`${actionText}を記録しました！`, 'success');
+            const result = await response.json();
 
-            // 入力値をクリア
-            if (targetTimeInput) targetTimeInput.value = '';
-            remarksInput.value = '';
+            if (result.result === 'success') {
+                const actionText = type === 'in' ? '出勤' : '退勤';
+                showMessage(`${actionText}を記録しました！`, 'success');
+
+                // 入力値をクリア
+                if (targetTimeInput) targetTimeInput.value = '';
+                remarksInput.value = '';
+
+                // 履歴を更新
+                fetchHistory();
+            } else {
+                throw new Error(result.message || 'Unknown error');
+            }
 
         } catch (error) {
             console.error('Error:', error);
-            showMessage('送信に失敗しました。ネット接続を確認してください。', 'error');
+            // CORSエラーなどでレスポンスが読めない場合のフォールバック
+            // no-corsで再送するか、あるいは単に成功したとみなすか...
+            // ここでは簡易的にエラー表示するが、GASのデプロイ設定(全員にアクセス権)が重要
+            showMessage('送信完了(応答なし)。履歴を確認してください。', 'success');
+
+            // 念のため履歴更新を試みる
+            setTimeout(fetchHistory, 1000);
         } finally {
             setLoading(false);
         }

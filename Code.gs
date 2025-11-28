@@ -51,9 +51,57 @@ function doPost(e) {
       debugSheet.appendRow([new Date(), '警告: 社員コード ' + employeeId + ' はマスタに未登録です']);
     }
     
-    // 2. 部署ごとの打刻データシートに記録
+    // 2. 部署ごとの打刻データシートを取得
     var departmentSheetName = '打刻_' + department;
     var logSheet = ss.getSheetByName(departmentSheetName);
+
+    // 履歴取得リクエストの場合
+    if (action === 'get_history') {
+      var historyData = [];
+      if (logSheet && logSheet.getLastRow() > 1) {
+        // 直近のデータを取得（最大30日分程度）
+        var lastRow = logSheet.getLastRow();
+        var startRow = Math.max(2, lastRow - 30);
+        var numRows = lastRow - startRow + 1;
+        
+        // A:日にち, B:社員コード, C:名前, D:種別出勤, E:出勤時刻, F:種別退勤, G:退勤時刻, H:備考
+        var range = logSheet.getRange(startRow, 1, numRows, 8);
+        var values = range.getValues();
+        
+        // 新しい順に並べ替えるために逆順で走査
+        for (var i = values.length - 1; i >= 0; i--) {
+          var row = values[i];
+          // 社員コードが一致するものだけ抽出
+          if (String(row[1]) === String(employeeId)) {
+            var dateVal = row[0];
+            if (dateVal instanceof Date) {
+              dateVal = Utilities.formatDate(dateVal, "Asia/Tokyo", "yyyy/MM/dd");
+            }
+            
+            historyData.push({
+              date: dateVal,
+              clockInTime: row[4] || '',  // E列
+              clockOutTime: row[6] || '', // G列
+              remarks: row[7] || ''       // H列
+            });
+            
+            // 最大10件まで
+            if (historyData.length >= 10) break;
+          }
+        }
+      }
+      
+      var output = ContentService.createTextOutput(JSON.stringify({
+        result: 'success',
+        username: username,
+        department: department,
+        history: historyData
+      }));
+      output.setMimeType(ContentService.MimeType.JSON);
+      return output;
+    }
+    
+    // 以下、打刻記録処理 (in/out)
     
     // 新しいヘッダー定義: A:日にち, B:社員コード, C:名前, D:種別出勤, E:出勤時刻, F:種別退勤, G:退勤時刻, H:備考
     if (!logSheet) {
