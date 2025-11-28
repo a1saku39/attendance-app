@@ -47,13 +47,24 @@
                     </button>
                 </div>
             </div>
-            <label for="gas-url">GAS WebアプリURL</label>
-            <input type="text" id="gas-url"
-                placeholder="https://script.google.com/macros/s/AKfycbyzpQm11ABzIxBk6QuTqnE2yMgbvLYzRaXdWmr3eXrmesXF9s8N0hsNtLyZn5_FNIuZUA/exec">
-            <button id="save-settings">保存</button>
-    </div>
-    </details>
-    </footer>
+
+            <div class="user-input-group">
+                <label for="remarks">備考</label>
+                <textarea id="remarks" rows="3" placeholder="備考があれば入力してください"></textarea>
+            </div>
+        </main>
+
+        <footer>
+            <details>
+                <summary>設定（管理者用）</summary>
+                <div class="settings">
+                    <label for="gas-url">GAS WebアプリURL</label>
+                    <input type="text" id="gas-url"
+                        placeholder="https://script.google.com/macros/s/AKfycbyGXf1lEV30290VM1wfZ15wBXHtzEmfaes9oRI_9VUqeQt6sBQb8we0HhukxJcl5iMR-w/exec">
+                    <button id="save-settings">保存</button>
+                </div>
+            </details>
+        </footer>
     </div>
     <div id="status-message" class="status-message"></div>
     <script src="script.js"></script>
