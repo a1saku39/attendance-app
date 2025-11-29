@@ -34,7 +34,7 @@ function doPost(e) {
     var lastRow = masterSheet.getLastRow();
     
     if (lastRow > 1) {
-      // 2行目以降のデータを取得（A列:コード, B列:氏名, C列:部署）
+      // 2行目以降のデータを取得(A列:コード, B列:氏名, C列:部署)
       var values = masterSheet.getRange(2, 1, lastRow - 1, 3).getValues();
       for (var i = 0; i < values.length; i++) {
         // 文字列として比較するためにString()を使用
@@ -59,14 +59,14 @@ function doPost(e) {
     
     // 以下、打刻記録処理 (in/out)
     
-    // 新しいヘッダー定義: A:日にち, B:社員コード, C:名前, D:種別出勤, E:出勤時刻, F:種別退勤, G:退勤時刻, H:備考
+    // 新しいヘッダー定義: A:日にち, B:社員コード, C:名前, D:種別出勤, E:出勤時刻, F:種別退勤, G:退勤時刻, H:勤務時間, I:備考
     if (!logSheet) {
       // 部署別シートがない場合は作成
       logSheet = ss.insertSheet(departmentSheetName);
-      logSheet.appendRow(['日にち', '社員コード', '名前', '種別出勤', '出勤時刻', '種別退勤', '退勤時刻', '備考']);
+      logSheet.appendRow(['日にち', '社員コード', '名前', '種別出勤', '出勤時刻', '種別退勤', '退勤時刻', '勤務時間', '備考']);
       debugSheet.appendRow([new Date(), '部署別シート「' + departmentSheetName + '」を新規作成しました']);
     } else if (logSheet.getLastRow() === 0) {
-      logSheet.appendRow(['日にち', '社員コード', '名前', '種別出勤', '出勤時刻', '種別退勤', '退勤時刻', '備考']);
+      logSheet.appendRow(['日にち', '社員コード', '名前', '種別出勤', '出勤時刻', '種別退勤', '退勤時刻', '勤務時間', '備考']);
     }
     
     // 日付と時刻のフォーマット
@@ -86,7 +86,7 @@ function doPost(e) {
     
     debugSheet.appendRow([new Date(), '部署別シート「' + departmentSheetName + '」に記録完了']);
     
-    // 3. 全体の打刻データにも記録（バックアップとして従来の形式で追記）
+    // 3. 全体の打刻データにも記録(バックアップとして従来の形式で追記)
     var allLogSheet = ss.getSheetByName('打刻データ_全体');
     if (!allLogSheet) {
       allLogSheet = ss.insertSheet('打刻データ_全体');
@@ -139,7 +139,7 @@ function updateOrAppendRow(sheet, data) {
   var lastRow = sheet.getLastRow();
   var foundRow = -1;
   
-  // データがある場合、既存の行を検索（直近100行程度を検索対象とする）
+  // データがある場合、既存の行を検索(直近100行程度を検索対象とする)
   if (lastRow > 1) {
     var startRow = Math.max(2, lastRow - 100);
     var numRows = lastRow - startRow + 1;
@@ -166,16 +166,20 @@ function updateOrAppendRow(sheet, data) {
     if (data.action === 'in') {
       sheet.getRange(foundRow, 4).setValue('出勤'); // D列: 種別出勤
       sheet.getRange(foundRow, 5).setValue(data.time); // E列: 出勤時刻
-      sheet.getRange(foundRow, 8).setValue(data.remarks); // H列: 備考
+      sheet.getRange(foundRow, 9).setValue(data.remarks); // I列: 備考
+      // 出勤時にも勤務時間の計算式を設定(退勤時刻が既に入力されている場合に備えて)
+      sheet.getRange(foundRow, 8).setFormula('=IF(AND(E' + foundRow + '<>"", G' + foundRow + '<>""), TEXT(G' + foundRow + '-E' + foundRow + ', "[h]:mm"), "")');
     } else if (data.action === 'out') {
       sheet.getRange(foundRow, 6).setValue('退勤'); // F列: 種別退勤
       sheet.getRange(foundRow, 7).setValue(data.time); // G列: 退勤時刻
-      // 退勤時も備考を更新（上書き）
-      sheet.getRange(foundRow, 8).setValue(data.remarks); // H列: 備考
+      // H列に勤務時間の計算式を設定
+      sheet.getRange(foundRow, 8).setFormula('=IF(AND(E' + foundRow + '<>"", G' + foundRow + '<>""), TEXT(G' + foundRow + '-E' + foundRow + ', "[h]:mm"), "")');
+      // 退勤時も備考を更新(上書き)
+      sheet.getRange(foundRow, 9).setValue(data.remarks); // I列: 備考
     }
   } else {
     // 新規行を追加
-    // A:日にち, B:社員コード, C:名前, D:種別出勤, E:出勤時刻, F:種別退勤, G:退勤時刻, H:備考
+    // A:日にち, B:社員コード, C:名前, D:種別出勤, E:出勤時刻, F:種別退勤, G:退勤時刻, H:勤務時間, I:備考
     var rowData = [
       data.date,
       data.id,
@@ -184,8 +188,13 @@ function updateOrAppendRow(sheet, data) {
       data.action === 'in' ? data.time : '',
       data.action === 'out' ? '退勤' : '',
       data.action === 'out' ? data.time : '',
-      data.remarks
+      '', // H列: 勤務時間(後で数式を設定)
+      data.remarks // I列: 備考
     ];
     sheet.appendRow(rowData);
+    
+    // 新規行の場合も勤務時間の計算式を設定
+    var newRow = sheet.getLastRow();
+    sheet.getRange(newRow, 8).setFormula('=IF(AND(E' + newRow + '<>"", G' + newRow + '<>""), TEXT(G' + newRow + '-E' + newRow + ', "[h]:mm"), "")');
   }
 }
