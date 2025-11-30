@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>月次勤怠確認・承認</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .controls {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .control-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .form-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 15px;
+            transition: all 0.3s ease;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        button {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(17, 153, 142, 0.4);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .btn-warning:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(245, 87, 108, 0.4);
+        }
+
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #666;
+        }
+
+        .btn-secondary:hover {
+            background: #d0d0d0;
+        }
+
+        .approval-status {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .progress-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .progress-step {
+            flex: 1;
+            text-align: center;
+            position: relative;
+        }
+
+        .progress-circle {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 10px;
+            font-size: 24px;
+            transition: all 0.3s ease;
+        }
+
+        .progress-circle.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .progress-circle.completed {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .progress-line {
+            flex: 1;
+            height: 4px;
+            background: #e0e0e0;
+            position: relative;
+            top: -25px;
+        }
+
+        .progress-line.completed {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+
+        .progress-label {
+            font-size: 13px;
+            color: #666;
+            font-weight: 600;
+        }
+
+        .progress-info {
+            font-size: 11px;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        .approval-actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .data-table {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        th:first-child {
+            border-radius: 12px 0 0 0;
+        }
+
+        th:last-child {
+            border-radius: 0 12px 0 0;
+        }
+
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 14px;
+            color: #333;
+        }
+
+        tr:hover {
+            background: #f8f9ff;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .message {
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+
+        .message.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 2px solid #bee5eb;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+            font-size: 16px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .control-group {
+                flex-direction: column;
+            }
+
+            .form-group {
+                width: 100%;
+            }
+
+            .approval-actions {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+
+            .progress-bar {
+                flex-direction: column;
+            }
+
+            .progress-line {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 月次勤怠確認・承認</h1>
+            <p class="subtitle">部署ごとの打刻データを確認し、複数段階で承認を行います</p>
+        </div>
+
+        <div id="messageArea"></div>
+
+        <div class="controls">
+            <div class="control-group">
+                <div class="form-group">
+                    <label for="department">部署</label>
+                    <select id="department">
+                        <option value="">部署を選択してください</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="yearMonth">年月</label>
+                    <input type="month" id="yearMonth">
+                </div>
+                <div class="form-group">
+                    <label for="approverName">承認者名</label>
+                    <input type="text" id="approverName" placeholder="山田 太郎">
+                </div>
+                <button class="btn-primary" onclick="loadMonthlyData()">データ表示</button>
+            </div>
+        </div>
+
+        <div id="approvalStatusArea" style="display: none;">
+            <div class="approval-status">
+                <div class="status-title">承認状況</div>
+                <div class="progress-bar">
+                    <div class="progress-step">
+                        <div class="progress-circle" id="step1">
+                            <span>1</span>
+                        </div>
+                        <div class="progress-label">第1承認</div>
+                        <div class="progress-info" id="step1Info">未承認</div>
+                    </div>
+                    <div class="progress-line" id="line1"></div>
+                    <div class="progress-step">
+                        <div class="progress-circle" id="step2">
+                            <span>2</span>
+                        </div>
+                        <div class="progress-label">第2承認</div>
+                        <div class="progress-info" id="step2Info">未承認</div>
+                    </div>
+                    <div class="progress-line" id="line2"></div>
+                    <div class="progress-step">
+                        <div class="progress-circle" id="step3">
+                            <span>✓</span>
+                        </div>
+                        <div class="progress-label">完了</div>
+                        <div class="progress-info" id="step3Info">-</div>
+                    </div>
+                </div>
+                <div class="approval-actions">
+                    <button class="btn-success" id="firstApprovalBtn" onclick="approve('first')" style="display: none;">
+                        第1承認を実行
+                    </button>
+                    <button class="btn-warning" id="secondApprovalBtn" onclick="approve('second')"
+                        style="display: none;">
+                        第2承認を実行
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="dataArea"></div>
+    </div>
+
+    <script>
+        const GAS_URL = 'YOUR_GAS_WEB_APP_URL'; // ここにGASのWebアプリURLを設定してください
+
+        let currentDepartment = '';
+        let currentYearMonth = '';
+        let currentApprovalStatus = null;
+
+        // ページ読み込み時の初期化
+        window.onload = function () {
+            // 今月をデフォルトに設定
+            const today = new Date();
+            const yearMonth = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
+            document.getElementById('yearMonth').value = yearMonth;
+
+            // 部署一覧を読み込み
+            loadDepartments();
+
+            // LocalStorageからGAS URLを読み込み
+            const savedUrl = localStorage.getItem('gasWebAppUrl');
+            if (savedUrl) {
+                // URLが設定されている場合は使用
+                console.log('GAS URL loaded from localStorage');
+            }
+        };
+
+        // 部署一覧を読み込む
+        function loadDepartments() {
+            const gasUrl = localStorage.getItem('gasWebAppUrl') || GAS_URL;
+
+            fetch(gasUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'getDepartments'
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.result === 'success') {
+                        const select = document.getElementById('department');
+                        data.departments.forEach(dept => {
+                            const option = document.createElement('option');
+                            option.value = dept;
+                            option.textContent = dept;
+                            select.appendChild(option);
+                        });
+                    } else {
+                        showMessage('error', '部署一覧の取得に失敗しました: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    showMessage('error', 'エラーが発生しました: ' + error.message);
+                });
+        }
+
+        // 月次データを読み込む
+        function loadMonthlyData() {
+            const department = document.getElementById('department').value;
+            const yearMonth = document.getElementById('yearMonth').value;
+            const approverName = document.getElementById('approverName').value.trim();
+
+            if (!department) {
+                showMessage('error', '部署を選択してください');
+                return;
+            }
+
+            if (!yearMonth) {
+                showMessage('error', '年月を選択してください');
+                return;
+            }
+
+            if (!approverName) {
+                showMessage('error', '承認者名を入力してください');
+                return;
+            }
+
+            currentDepartment = department;
+            currentYearMonth = yearMonth;
+
+            // ローディング表示
+            document.getElementById('dataArea').innerHTML = '<div class="loading"><div class="spinner"></div>データを読み込んでいます...</div>';
+            document.getElementById('approvalStatusArea').style.display = 'none';
+
+            const gasUrl = localStorage.getItem('gasWebAppUrl') || GAS_URL;
+
+            fetch(gasUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'getMonthlyData',
+                    department: department,
+                    yearMonth: yearMonth
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.result === 'success') {
+                        displayData(data.data);
+                        displayApprovalStatus(data.approvalStatus);
+                    } else {
+                        showMessage('error', 'データの取得に失敗しました: ' + data.message);
+                        document.getElementById('dataArea').innerHTML = '';
+                    }
+                })
+                .catch(error => {
+                    showMessage('error', 'エラーが発生しました: ' + error.message);
+                    document.getElementById('dataArea').innerHTML = '';
+                });
+        }
+
+        // データを表示
+        function displayData(data) {
+            const dataArea = document.getElementById('dataArea');
+
+            if (data.length === 0) {
+                dataArea.innerHTML = `
+                    <div class="data-table">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📭</div>
+                            <div>この期間のデータはありません</div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = `
+                <div class="data-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>日付</th>
+                                <th>社員コード</th>
+                                <th>氏名</th>
+                                <th>出勤時刻</th>
+                                <th>退勤時刻</th>
+                                <th>勤務時間</th>
+                                <th>備考</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            data.forEach(row => {
+                html += `
+                    <tr>
+                        <td>${row.date || '-'}</td>
+                        <td>${row.employeeId || '-'}</td>
+                        <td>${row.name || '-'}</td>
+                        <td>${row.clockInTime || '-'}</td>
+                        <td>${row.clockOutTime || '-'}</td>
+                        <td>${row.workingHours || '-'}</td>
+                        <td>${row.remarks || '-'}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            dataArea.innerHTML = html;
+        }
+
+        // 承認状況を表示
+        function displayApprovalStatus(status) {
+            currentApprovalStatus = status;
+            document.getElementById('approvalStatusArea').style.display = 'block';
+
+            const step1 = document.getElementById('step1');
+            const step2 = document.getElementById('step2');
+            const step3 = document.getElementById('step3');
+            const line1 = document.getElementById('line1');
+            const line2 = document.getElementById('line2');
+            const step1Info = document.getElementById('step1Info');
+            const step2Info = document.getElementById('step2Info');
+            const step3Info = document.getElementById('step3Info');
+            const firstApprovalBtn = document.getElementById('firstApprovalBtn');
+            const secondApprovalBtn = document.getElementById('secondApprovalBtn');
+
+            // リセット
+            step1.className = 'progress-circle';
+            step2.className = 'progress-circle';
+            step3.className = 'progress-circle';
+            line1.className = 'progress-line';
+            line2.className = 'progress-line';
+            firstApprovalBtn.style.display = 'none';
+            secondApprovalBtn.style.display = 'none';
+
+            if (status.status === 'not_approved') {
+                step1.classList.add('active');
+                step1Info.textContent = '未承認';
+                step2Info.textContent = '未承認';
+                step3Info.textContent = '-';
+                firstApprovalBtn.style.display = 'block';
+            } else if (status.status === 'first_approved') {
+                step1.classList.add('completed');
+                step1.innerHTML = '<span>✓</span>';
+                line1.classList.add('completed');
+                step2.classList.add('active');
+                step1Info.textContent = status.firstApprover + '\n' + status.firstApprovalDate;
+                step2Info.textContent = '未承認';
+                step3Info.textContent = '-';
+                secondApprovalBtn.style.display = 'block';
+            } else if (status.status === 'fully_approved') {
+                step1.classList.add('completed');
+                step1.innerHTML = '<span>✓</span>';
+                line1.classList.add('completed');
+                step2.classList.add('completed');
+                step2.innerHTML = '<span>✓</span>';
+                line2.classList.add('completed');
+                step3.classList.add('completed');
+                step1Info.textContent = status.firstApprover + '\n' + status.firstApprovalDate;
+                step2Info.textContent = status.secondApprover + '\n' + status.secondApprovalDate;
+                step3Info.textContent = '承認完了';
+                showMessage('success', 'この月の勤怠データは承認が完了しています');
+            }
+        }
+
+        // 承認を実行
+        function approve(level) {
+            const approverName = document.getElementById('approverName').value.trim();
+
+            if (!approverName) {
+                showMessage('error', '承認者名を入力してください');
+                return;
+            }
+
+            if (!confirm((level === 'first' ? '第1' : '第2') + '承認を実行しますか?')) {
+                return;
+            }
+
+            const gasUrl = localStorage.getItem('gasWebAppUrl') || GAS_URL;
+
+            fetch(gasUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'recordApproval',
+                    department: currentDepartment,
+                    yearMonth: currentYearMonth,
+                    approverName: approverName,
+                    approvalLevel: level
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.result === 'success') {
+                        showMessage('success', data.message);
+                        displayApprovalStatus(data.approvalStatus);
+                    } else {
+                        showMessage('error', '承認に失敗しました: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    showMessage('error', 'エラーが発生しました: ' + error.message);
+                });
+        }
+
+        // メッセージを表示
+        function showMessage(type, message) {
+            const messageArea = document.getElementById('messageArea');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ' + type;
+            messageDiv.textContent = message;
+            messageArea.innerHTML = '';
+            messageArea.appendChild(messageDiv);
+
+            // 5秒後に自動で消す
+            setTimeout(() => {
+                messageDiv.style.opacity = '0';
+                setTimeout(() => {
+                    messageDiv.remove();
+                }, 300);
+            }, 5000);
+        }
+    </script>
+</body>
+
+</html>
