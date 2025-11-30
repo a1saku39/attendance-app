@@ -25,11 +25,9 @@ body {
     display: flex;
     justify-content: center;
     align-items: flex-start;
-    /* 上寄せに変更 */
     min-height: 100vh;
     padding: 20px;
     padding-top: 40px;
-    /* 上部の余白を追加 */
 }
 
 .container {
@@ -100,6 +98,11 @@ header h1 {
     text-align: center;
 }
 
+/* Center datetime-local inputs */
+input[type="datetime-local"] {
+    text-align: center;
+}
+
 /* New Layout Styles */
 .attendance-actions {
     display: flex;
@@ -138,7 +141,6 @@ header h1 {
     font-weight: 600;
     transition: all 0.3s ease;
     box-shadow: 0 4px 6px rgba(79, 70, 229, 0.2);
-    margin-top: 15px;
 }
 
 .nav-link-btn:hover {
@@ -151,9 +153,7 @@ header h1 {
     border: none;
     border-radius: 15px;
     padding: 25px 20px;
-    /* Increased padding */
     font-size: 1.3rem;
-    /* Increased font size */
     font-weight: 700;
     color: white;
     cursor: pointer;
