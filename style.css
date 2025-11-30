@@ -24,9 +24,12 @@ body {
     color: var(--text-main);
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start;
+    /* 上寄せに変更 */
     min-height: 100vh;
     padding: 20px;
+    padding-top: 40px;
+    /* 上部の余白を追加 */
 }
 
 .container {
