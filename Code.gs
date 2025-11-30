@@ -11,6 +11,10 @@ function doPost(e) {
       return recordApproval(e);
     } else if (action === 'getDepartments') {
       return getDepartments();
+    } else if (action === 'getEmployeesByDepartmentAndMonth') {
+      return getEmployeesByDepartmentAndMonth(e);
+    } else if (action === 'approveEmployee') {
+      return approveEmployee(e);
     }
     
     // 以下、通常の打刻処理
@@ -590,6 +594,207 @@ function getDepartments() {
       result: 'success',
       departments: departments
     })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'error',
+      message: error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// 部署と年月を指定して社員一覧と打刻状況を取得
+function getEmployeesByDepartmentAndMonth(e) {
+  try {
+    var jsonData = JSON.parse(e.postData.contents);
+    var department = jsonData.department;
+    var yearMonth = jsonData.yearMonth; // "2024-11" 形式
+    
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var masterSheet = ss.getSheetByName('社員マスタ');
+    
+    if (!masterSheet) {
+      return ContentService.createTextOutput(JSON.stringify({
+        result: 'error',
+        message: '社員マスタが見つかりません'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // 部署の社員一覧を取得
+    var lastRow = masterSheet.getLastRow();
+    if (lastRow <= 1) {
+      return ContentService.createTextOutput(JSON.stringify({
+        result: 'success',
+        employees: []
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    var values = masterSheet.getRange(2, 1, lastRow - 1, 3).getValues();
+    var employees = [];
+    
+    for (var i = 0; i < values.length; i++) {
+      if (String(values[i][2]) === String(department)) {
+        employees.push({
+          employeeId: String(values[i][0]),
+          name: String(values[i][1])
+        });
+      }
+    }
+    
+    // 打刻シートから各社員の打刻状況をチェック
+    var departmentSheetName = '打刻_' + department;
+    var logSheet = ss.getSheetByName(departmentSheetName);
+    
+    if (!logSheet) {
+      // 打刻シートがない場合は全員×
+      for (var i = 0; i < employees.length; i++) {
+        employees[i].attendanceStatus = '×';
+        employees[i].approved = false;
+      }
+    } else {
+      // 年月から営業日数を計算（簡易版：土日を除く）
+      var year = parseInt(yearMonth.split('-')[0]);
+      var month = parseInt(yearMonth.split('-')[1]);
+      var daysInMonth = new Date(year, month, 0).getDate();
+      var workDays = 0;
+      
+      for (var day = 1; day <= daysInMonth; day++) {
+        var date = new Date(year, month - 1, day);
+        var dayOfWeek = date.getDay();
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) { // 土日以外
+          workDays++;
+        }
+      }
+      
+      // 打刻データを取得
+      var logLastRow = logSheet.getLastRow();
+      if (logLastRow > 1) {
+        var logValues = logSheet.getRange(2, 1, logLastRow - 1, 10).getValues();
+        
+        for (var i = 0; i < employees.length; i++) {
+          var employeeId = employees[i].employeeId;
+          var attendanceDays = {};
+          var approved = false;
+          
+          // この社員の打刻データを集計
+          for (var j = 0; j < logValues.length; j++) {
+            var logDate = logValues[j][0];
+            var logId = String(logValues[j][1]);
+            var logApproval = logValues[j][9]; // J列（10列目）
+            
+            // 日付を年月でフィルタ
+            var formattedDate = '';
+            if (logDate instanceof Date) {
+              formattedDate = Utilities.formatDate(logDate, "Asia/Tokyo", "yyyy/MM");
+            } else if (typeof logDate === 'string') {
+              formattedDate = logDate.substring(0, 7);
+            }
+            
+            if (formattedDate === yearMonth && logId === employeeId) {
+              var dateKey = '';
+              if (logDate instanceof Date) {
+                dateKey = Utilities.formatDate(logDate, "Asia/Tokyo", "yyyy/MM/dd");
+              } else {
+                dateKey = String(logDate);
+              }
+              attendanceDays[dateKey] = true;
+              
+              // 承認フラグをチェック
+              if (logApproval === '○') {
+                approved = true;
+              }
+            }
+          }
+          
+          // 打刻日数と営業日数を比較
+          var attendanceCount = Object.keys(attendanceDays).length;
+          employees[i].attendanceStatus = (attendanceCount >= workDays) ? '○' : '×';
+          employees[i].approved = approved;
+          employees[i].attendanceDays = attendanceCount;
+          employees[i].workDays = workDays;
+        }
+      } else {
+        // データがない場合は全員×
+        for (var i = 0; i < employees.length; i++) {
+          employees[i].attendanceStatus = '×';
+          employees[i].approved = false;
+        }
+      }
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'success',
+      employees: employees
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'error',
+      message: error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// 社員の承認を記録（部署シートのJ列に○を記録）
+function approveEmployee(e) {
+  try {
+    var jsonData = JSON.parse(e.postData.contents);
+    var department = jsonData.department;
+    var employeeId = jsonData.employeeId;
+    var yearMonth = jsonData.yearMonth;
+    
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var departmentSheetName = '打刻_' + department;
+    var logSheet = ss.getSheetByName(departmentSheetName);
+    
+    if (!logSheet) {
+      return ContentService.createTextOutput(JSON.stringify({
+        result: 'error',
+        message: '部署シートが見つかりません'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // J列に承認フラグを追加（ヘッダーがない場合は追加）
+    var headerRow = logSheet.getRange(1, 1, 1, 10).getValues()[0];
+    if (!headerRow[9]) {
+      logSheet.getRange(1, 10).setValue('承認');
+    }
+    
+    // 該当社員の該当月のデータを検索してJ列に○を記録
+    var lastRow = logSheet.getLastRow();
+    if (lastRow > 1) {
+      var values = logSheet.getRange(2, 1, lastRow - 1, 2).getValues();
+      var updatedCount = 0;
+      
+      for (var i = 0; i < values.length; i++) {
+        var logDate = values[i][0];
+        var logId = String(values[i][1]);
+        
+        // 日付を年月でフィルタ
+        var formattedDate = '';
+        if (logDate instanceof Date) {
+          formattedDate = Utilities.formatDate(logDate, "Asia/Tokyo", "yyyy/MM");
+        } else if (typeof logDate === 'string') {
+          formattedDate = logDate.substring(0, 7);
+        }
+        
+        if (formattedDate === yearMonth && logId === employeeId) {
+          logSheet.getRange(i + 2, 10).setValue('○');
+          updatedCount++;
+        }
+      }
+      
+      return ContentService.createTextOutput(JSON.stringify({
+        result: 'success',
+        message: updatedCount + '件の打刻データに承認フラグを記録しました',
+        updatedCount: updatedCount
+      })).setMimeType(ContentService.MimeType.JSON);
+    } else {
+      return ContentService.createTextOutput(JSON.stringify({
+        result: 'error',
+        message: '打刻データが見つかりません'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
     
   } catch (error) {
     return ContentService.createTextOutput(JSON.stringify({

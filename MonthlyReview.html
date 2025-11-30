@@ -24,6 +24,22 @@
             margin: 0 auto;
         }
 
+        .back-link {
+            display: inline-block;
+            margin-bottom: 15px;
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            opacity: 0.9;
+            transition: opacity 0.3s;
+        }
+
+        .back-link:hover {
+            opacity: 1;
+            text-decoration: underline;
+        }
+
         .header {
             background: white;
             border-radius: 20px;
@@ -61,7 +77,6 @@
         .form-group {
             flex: 1;
             min-width: 120px;
-            /* スマートフォンでの表示を考慮して最小幅を調整 */
         }
 
         label {
@@ -76,7 +91,6 @@
         select {
             width: 100%;
             max-width: 100%;
-            /* 親要素からはみ出さないように設定 */
             padding: 12px 16px;
             border: 2px solid #e0e0e0;
             border-radius: 12px;
@@ -114,6 +128,8 @@
         .btn-success {
             background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
             color: white;
+            padding: 8px 20px;
+            font-size: 14px;
         }
 
         .btn-success:hover {
@@ -121,105 +137,10 @@
             box-shadow: 0 8px 20px rgba(17, 153, 142, 0.4);
         }
 
-        .btn-warning {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            color: white;
-        }
-
-        .btn-warning:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(245, 87, 108, 0.4);
-        }
-
-        .btn-secondary {
-            background: #e0e0e0;
-            color: #666;
-        }
-
-        .btn-secondary:hover {
-            background: #d0d0d0;
-        }
-
-        .approval-status {
-            background: white;
-            border-radius: 20px;
-            padding: 25px;
-            margin-bottom: 20px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-        }
-
-        .status-title {
-            font-size: 18px;
-            font-weight: 700;
-            color: #333;
-            margin-bottom: 20px;
-        }
-
-        .progress-bar {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        .progress-step {
-            flex: 1;
-            text-align: center;
-            position: relative;
-        }
-
-        .progress-circle {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: #e0e0e0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 10px;
-            font-size: 24px;
-            transition: all 0.3s ease;
-        }
-
-        .progress-circle.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .progress-circle.completed {
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-            color: white;
-        }
-
-        .progress-line {
-            flex: 1;
-            height: 4px;
-            background: #e0e0e0;
-            position: relative;
-            top: -25px;
-        }
-
-        .progress-line.completed {
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-        }
-
-        .progress-label {
-            font-size: 13px;
-            color: #666;
-            font-weight: 600;
-        }
-
-        .progress-info {
-            font-size: 11px;
-            color: #999;
-            margin-top: 5px;
-        }
-
-        .approval-actions {
-            display: flex;
-            gap: 15px;
-            margin-top: 20px;
+        .btn-success:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
         }
 
         .data-table {
@@ -261,6 +182,37 @@
 
         tr:hover {
             background: #f8f9ff;
+        }
+
+        .status-badge {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            line-height: 30px;
+            text-align: center;
+            border-radius: 50%;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .status-ok {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-ng {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .approved-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: #d4edda;
+            color: #155724;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
         }
 
         .empty-state {
@@ -348,40 +300,11 @@
             .form-group {
                 width: 100%;
                 min-width: 0;
-                /* スマホでは最小幅をリセット */
-            }
-
-            .approval-actions {
-                flex-direction: column;
             }
 
             button {
                 width: 100%;
             }
-
-            .progress-bar {
-                flex-direction: column;
-            }
-
-            .progress-line {
-                display: none;
-            }
-        }
-
-        .back-link {
-            display: inline-block;
-            margin-bottom: 15px;
-            color: white;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 14px;
-            opacity: 0.9;
-            transition: opacity 0.3s;
-        }
-
-        .back-link:hover {
-            opacity: 1;
-            text-decoration: underline;
         }
     </style>
 </head>
@@ -391,7 +314,7 @@
         <a href="index.html" class="back-link">← 勤怠入力画面へ戻る</a>
         <div class="header">
             <h1>📋 月次勤怠確認・承認</h1>
-            <p class="subtitle">部署ごとの打刻データを確認し、複数段階で承認を行います</p>
+            <p class="subtitle">部署ごとの社員の打刻状況を確認し、個別に承認を行います</p>
         </div>
 
         <div id="messageArea"></div>
@@ -408,51 +331,7 @@
                     <label for="yearMonth">年月</label>
                     <input type="month" id="yearMonth">
                 </div>
-                <div class="form-group">
-                    <label for="approverName">承認者名</label>
-                    <input type="text" id="approverName" placeholder="山田 太郎">
-                </div>
-                <button class="btn-primary" onclick="loadMonthlyData()">データ表示</button>
-            </div>
-        </div>
-
-        <div id="approvalStatusArea" style="display: none;">
-            <div class="approval-status">
-                <div class="status-title">承認状況</div>
-                <div class="progress-bar">
-                    <div class="progress-step">
-                        <div class="progress-circle" id="step1">
-                            <span>1</span>
-                        </div>
-                        <div class="progress-label">第1承認</div>
-                        <div class="progress-info" id="step1Info">未承認</div>
-                    </div>
-                    <div class="progress-line" id="line1"></div>
-                    <div class="progress-step">
-                        <div class="progress-circle" id="step2">
-                            <span>2</span>
-                        </div>
-                        <div class="progress-label">第2承認</div>
-                        <div class="progress-info" id="step2Info">未承認</div>
-                    </div>
-                    <div class="progress-line" id="line2"></div>
-                    <div class="progress-step">
-                        <div class="progress-circle" id="step3">
-                            <span>✓</span>
-                        </div>
-                        <div class="progress-label">完了</div>
-                        <div class="progress-info" id="step3Info">-</div>
-                    </div>
-                </div>
-                <div class="approval-actions">
-                    <button class="btn-success" id="firstApprovalBtn" onclick="approve('first')" style="display: none;">
-                        第1承認を実行
-                    </button>
-                    <button class="btn-warning" id="secondApprovalBtn" onclick="approve('second')"
-                        style="display: none;">
-                        第2承認を実行
-                    </button>
-                </div>
+                <button class="btn-primary" onclick="loadEmployeeList()">社員一覧を表示</button>
             </div>
         </div>
 
@@ -460,11 +339,10 @@
     </div>
 
     <script>
-        const GAS_URL = 'YOUR_GAS_WEB_APP_URL'; // ここにGASのWebアプリURLを設定してください
+        const GAS_URL = 'YOUR_GAS_WEB_APP_URL';
 
         let currentDepartment = '';
         let currentYearMonth = '';
-        let currentApprovalStatus = null;
 
         // ページ読み込み時の初期化
         window.onload = function () {
@@ -473,11 +351,10 @@
             const yearMonth = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
             document.getElementById('yearMonth').value = yearMonth;
 
-            // LocalStorageからGAS URLを読み込み (キー名を統一)
+            // LocalStorageからGAS URLを読み込み
             const savedUrl = localStorage.getItem('attendance_gas_url');
             if (savedUrl) {
                 console.log('GAS URL loaded from localStorage');
-                // URLが保存されている場合のみ部署一覧を読み込む
                 loadDepartments();
             } else {
                 showMessage('info', '設定画面でGAS WebアプリのURLを設定してください');
@@ -496,7 +373,7 @@
             fetch(gasUrl, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'text/plain;charset=utf-8', // CORS対策でtext/plainに変更
+                    'Content-Type': 'text/plain;charset=utf-8',
                 },
                 body: JSON.stringify({
                     action: 'getDepartments'
@@ -506,7 +383,6 @@
                 .then(data => {
                     if (data.result === 'success') {
                         const select = document.getElementById('department');
-                        // 既存のオプションをクリア（デフォルト以外）
                         select.innerHTML = '<option value="">部署を選択してください</option>';
 
                         data.departments.forEach(dept => {
@@ -524,11 +400,10 @@
                 });
         }
 
-        // 月次データを読み込む
-        function loadMonthlyData() {
+        // 社員一覧を読み込む
+        function loadEmployeeList() {
             const department = document.getElementById('department').value;
             const yearMonth = document.getElementById('yearMonth').value;
-            const approverName = document.getElementById('approverName').value.trim();
 
             if (!department) {
                 showMessage('error', '部署を選択してください');
@@ -540,17 +415,11 @@
                 return;
             }
 
-            if (!approverName) {
-                showMessage('error', '承認者名を入力してください');
-                return;
-            }
-
             currentDepartment = department;
             currentYearMonth = yearMonth;
 
             // ローディング表示
             document.getElementById('dataArea').innerHTML = '<div class="loading"><div class="spinner"></div>データを読み込んでいます...</div>';
-            document.getElementById('approvalStatusArea').style.display = 'none';
 
             const gasUrl = localStorage.getItem('attendance_gas_url') || GAS_URL;
 
@@ -560,7 +429,7 @@
                     'Content-Type': 'text/plain;charset=utf-8',
                 },
                 body: JSON.stringify({
-                    action: 'getMonthlyData',
+                    action: 'getEmployeesByDepartmentAndMonth',
                     department: department,
                     yearMonth: yearMonth
                 })
@@ -568,8 +437,7 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.result === 'success') {
-                        displayData(data.data);
-                        displayApprovalStatus(data.approvalStatus);
+                        displayEmployeeList(data.employees);
                     } else {
                         showMessage('error', 'データの取得に失敗しました: ' + data.message);
                         document.getElementById('dataArea').innerHTML = '';
@@ -581,16 +449,16 @@
                 });
         }
 
-        // データを表示
-        function displayData(data) {
+        // 社員一覧を表示
+        function displayEmployeeList(employees) {
             const dataArea = document.getElementById('dataArea');
 
-            if (data.length === 0) {
+            if (employees.length === 0) {
                 dataArea.innerHTML = `
                     <div class="data-table">
                         <div class="empty-state">
                             <div class="empty-state-icon">📭</div>
-                            <div>この期間のデータはありません</div>
+                            <div>この部署に社員が登録されていません</div>
                         </div>
                     </div>
                 `;
@@ -602,28 +470,35 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>日付</th>
                                 <th>社員コード</th>
                                 <th>氏名</th>
-                                <th>出勤時刻</th>
-                                <th>退勤時刻</th>
-                                <th>勤務時間</th>
-                                <th>備考</th>
+                                <th>打刻状況</th>
+                                <th>打刻日数</th>
+                                <th>承認状態</th>
+                                <th>操作</th>
                             </tr>
                         </thead>
                         <tbody>
             `;
 
-            data.forEach(row => {
+            employees.forEach(emp => {
+                const statusClass = emp.attendanceStatus === '○' ? 'status-ok' : 'status-ng';
+                const approvedBadge = emp.approved ? '<span class="approved-badge">承認済み</span>' : '';
+                const buttonDisabled = emp.approved ? 'disabled' : '';
+                const attendanceInfo = emp.workDays ? `${emp.attendanceDays}/${emp.workDays}日` : '-';
+
                 html += `
                     <tr>
-                        <td>${row.date || '-'}</td>
-                        <td>${row.employeeId || '-'}</td>
-                        <td>${row.name || '-'}</td>
-                        <td>${row.clockInTime || '-'}</td>
-                        <td>${row.clockOutTime || '-'}</td>
-                        <td>${row.workingHours || '-'}</td>
-                        <td>${row.remarks || '-'}</td>
+                        <td>${emp.employeeId}</td>
+                        <td>${emp.name}</td>
+                        <td><span class="status-badge ${statusClass}">${emp.attendanceStatus}</span></td>
+                        <td>${attendanceInfo}</td>
+                        <td>${approvedBadge}</td>
+                        <td>
+                            <button class="btn-success" onclick="approveEmployee('${emp.employeeId}', '${emp.name}')" ${buttonDisabled}>
+                                承認
+                            </button>
+                        </td>
                     </tr>
                 `;
             });
@@ -637,71 +512,9 @@
             dataArea.innerHTML = html;
         }
 
-        // 承認状況を表示
-        function displayApprovalStatus(status) {
-            currentApprovalStatus = status;
-            document.getElementById('approvalStatusArea').style.display = 'block';
-
-            const step1 = document.getElementById('step1');
-            const step2 = document.getElementById('step2');
-            const step3 = document.getElementById('step3');
-            const line1 = document.getElementById('line1');
-            const line2 = document.getElementById('line2');
-            const step1Info = document.getElementById('step1Info');
-            const step2Info = document.getElementById('step2Info');
-            const step3Info = document.getElementById('step3Info');
-            const firstApprovalBtn = document.getElementById('firstApprovalBtn');
-            const secondApprovalBtn = document.getElementById('secondApprovalBtn');
-
-            // リセット
-            step1.className = 'progress-circle';
-            step2.className = 'progress-circle';
-            step3.className = 'progress-circle';
-            line1.className = 'progress-line';
-            line2.className = 'progress-line';
-            firstApprovalBtn.style.display = 'none';
-            secondApprovalBtn.style.display = 'none';
-
-            if (status.status === 'not_approved') {
-                step1.classList.add('active');
-                step1Info.textContent = '未承認';
-                step2Info.textContent = '未承認';
-                step3Info.textContent = '-';
-                firstApprovalBtn.style.display = 'block';
-            } else if (status.status === 'first_approved') {
-                step1.classList.add('completed');
-                step1.innerHTML = '<span>✓</span>';
-                line1.classList.add('completed');
-                step2.classList.add('active');
-                step1Info.textContent = status.firstApprover + '\n' + status.firstApprovalDate;
-                step2Info.textContent = '未承認';
-                step3Info.textContent = '-';
-                secondApprovalBtn.style.display = 'block';
-            } else if (status.status === 'fully_approved') {
-                step1.classList.add('completed');
-                step1.innerHTML = '<span>✓</span>';
-                line1.classList.add('completed');
-                step2.classList.add('completed');
-                step2.innerHTML = '<span>✓</span>';
-                line2.classList.add('completed');
-                step3.classList.add('completed');
-                step1Info.textContent = status.firstApprover + '\n' + status.firstApprovalDate;
-                step2Info.textContent = status.secondApprover + '\n' + status.secondApprovalDate;
-                step3Info.textContent = '承認完了';
-                showMessage('success', 'この月の勤怠データは承認が完了しています');
-            }
-        }
-
-        // 承認を実行
-        function approve(level) {
-            const approverName = document.getElementById('approverName').value.trim();
-
-            if (!approverName) {
-                showMessage('error', '承認者名を入力してください');
-                return;
-            }
-
-            if (!confirm((level === 'first' ? '第1' : '第2') + '承認を実行しますか?')) {
+        // 社員を承認
+        function approveEmployee(employeeId, employeeName) {
+            if (!confirm(`${employeeName} さんの勤怠を承認しますか？`)) {
                 return;
             }
 
@@ -713,18 +526,18 @@
                     'Content-Type': 'text/plain;charset=utf-8',
                 },
                 body: JSON.stringify({
-                    action: 'recordApproval',
+                    action: 'approveEmployee',
                     department: currentDepartment,
-                    yearMonth: currentYearMonth,
-                    approverName: approverName,
-                    approvalLevel: level
+                    employeeId: employeeId,
+                    yearMonth: currentYearMonth
                 })
             })
                 .then(response => response.json())
                 .then(data => {
                     if (data.result === 'success') {
                         showMessage('success', data.message);
-                        displayApprovalStatus(data.approvalStatus);
+                        // 一覧を再読み込み
+                        loadEmployeeList();
                     } else {
                         showMessage('error', '承認に失敗しました: ' + data.message);
                     }
