@@ -741,16 +741,22 @@ function approveEmployee(e) {
     var jsonData = JSON.parse(e.postData.contents);
     var department = jsonData.department;
     var employeeId = jsonData.employeeId;
-    var yearMonth = jsonData.yearMonth;
+    var yearMonth = jsonData.yearMonth; // "2024-11" 形式
     
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var departmentSheetName = '打刻_' + department;
     var logSheet = ss.getSheetByName(departmentSheetName);
     
+    // デバッグログ
+    var debugSheet = ss.getSheetByName('デバッグログ');
+    if (debugSheet) {
+      debugSheet.appendRow([new Date(), '承認処理開始: 部署=' + department + ', 社員ID=' + employeeId + ', 年月=' + yearMonth]);
+    }
+    
     if (!logSheet) {
       return ContentService.createTextOutput(JSON.stringify({
         result: 'error',
-        message: '部署シートが見つかりません'
+        message: '部署シート「' + departmentSheetName + '」が見つかりません'
       })).setMimeType(ContentService.MimeType.JSON);
     }
     
@@ -758,6 +764,9 @@ function approveEmployee(e) {
     var headerRow = logSheet.getRange(1, 1, 1, 10).getValues()[0];
     if (!headerRow[9]) {
       logSheet.getRange(1, 10).setValue('承認');
+      if (debugSheet) {
+        debugSheet.appendRow([new Date(), 'J列に「承認」ヘッダーを追加しました']);
+      }
     }
     
     // 該当社員の該当月のデータを検索してJ列に○を記録
@@ -765,6 +774,15 @@ function approveEmployee(e) {
     if (lastRow > 1) {
       var values = logSheet.getRange(2, 1, lastRow - 1, 2).getValues();
       var updatedCount = 0;
+      
+      // 年月を正規化（"2024-11" → "2024/11" の両方に対応）
+      var targetYearMonth1 = yearMonth; // "2024-11"
+      var targetYearMonth2 = yearMonth.replace('-', '/'); // "2024/11"
+      
+      if (debugSheet) {
+        debugSheet.appendRow([new Date(), '検索対象年月: ' + targetYearMonth1 + ' または ' + targetYearMonth2]);
+        debugSheet.appendRow([new Date(), '検索範囲: ' + (lastRow - 1) + '行']);
+      }
       
       for (var i = 0; i < values.length; i++) {
         var logDate = values[i][0];
@@ -775,13 +793,26 @@ function approveEmployee(e) {
         if (logDate instanceof Date) {
           formattedDate = Utilities.formatDate(logDate, "Asia/Tokyo", "yyyy/MM");
         } else if (typeof logDate === 'string') {
-          formattedDate = logDate.substring(0, 7);
+          // 文字列の場合は最初の7文字を取得（"2024/11/01" → "2024/11"）
+          formattedDate = String(logDate).substring(0, 7);
         }
         
-        if (formattedDate === yearMonth && logId === employeeId) {
+        // 年月と社員IDが一致するかチェック
+        var dateMatches = (formattedDate === targetYearMonth1 || formattedDate === targetYearMonth2);
+        var idMatches = (logId === employeeId);
+        
+        if (dateMatches && idMatches) {
           logSheet.getRange(i + 2, 10).setValue('○');
           updatedCount++;
+          
+          if (debugSheet) {
+            debugSheet.appendRow([new Date(), '承認記録: 行' + (i + 2) + ', 日付=' + formattedDate + ', ID=' + logId]);
+          }
         }
+      }
+      
+      if (debugSheet) {
+        debugSheet.appendRow([new Date(), '承認処理完了: ' + updatedCount + '件更新']);
       }
       
       return ContentService.createTextOutput(JSON.stringify({
@@ -792,15 +823,27 @@ function approveEmployee(e) {
     } else {
       return ContentService.createTextOutput(JSON.stringify({
         result: 'error',
-        message: '打刻データが見つかりません'
+        message: '打刻データが見つかりません（シートにデータ行がありません）'
       })).setMimeType(ContentService.MimeType.JSON);
     }
     
   } catch (error) {
+    // エラーログ
+    try {
+      var ss = SpreadsheetApp.getActiveSpreadsheet();
+      var debugSheet = ss.getSheetByName('デバッグログ');
+      if (debugSheet) {
+        debugSheet.appendRow([new Date(), '承認処理エラー: ' + error.toString()]);
+      }
+    } catch (e) {
+      // ログ記録失敗は無視
+    }
+    
     return ContentService.createTextOutput(JSON.stringify({
       result: 'error',
       message: error.toString()
     })).setMimeType(ContentService.MimeType.JSON);
   }
 }
+
 
