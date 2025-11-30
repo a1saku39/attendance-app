@@ -60,8 +60,8 @@
 
         .form-group {
             flex: 1;
-            min-width: 150px;
-            /* スマートフォンでの表示を考慮して最小幅を縮小 */
+            min-width: 120px;
+            /* スマートフォンでの表示を考慮して最小幅を調整 */
         }
 
         label {
@@ -347,6 +347,8 @@
 
             .form-group {
                 width: 100%;
+                min-width: 0;
+                /* スマホでは最小幅をリセット */
             }
 
             .approval-actions {
