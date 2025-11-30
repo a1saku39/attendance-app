@@ -40,7 +40,7 @@ function doPost(e) {
     if (!masterSheet) {
       // マスタシートがない場合は作成してヘッダーを追加
       masterSheet = ss.insertSheet('社員マスタ');
-      masterSheet.appendRow(['社員コード', '氏名', '部署']);
+      masterSheet.appendRow(['社員コード', '氏名', '部署', '承認対象部署', '第1承認者', '第2承認者']);
       debugSheet.appendRow([new Date(), '社員マスタシートを新規作成しました']);
     }
     
@@ -509,29 +509,43 @@ function recordApproval(e) {
 // 承認者の権限を確認する関数
 function checkApproverPermission(department, approverName, approvalLevel) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var approverSheet = ss.getSheetByName('承認者マスタ');
+  var masterSheet = ss.getSheetByName('社員マスタ');
   
-  if (!approverSheet) {
-    // 承認者マスタがない場合は作成
-    approverSheet = ss.insertSheet('承認者マスタ');
-    approverSheet.appendRow(['部署', '第1承認者', '第2承認者']);
+  if (!masterSheet) {
     return false;
   }
   
-  var lastRow = approverSheet.getLastRow();
+  var lastRow = masterSheet.getLastRow();
   if (lastRow <= 1) {
     return false;
   }
   
-  var values = approverSheet.getRange(2, 1, lastRow - 1, 3).getValues();
+  // 社員マスタ: A:コード, B:氏名, C:部署, D:承認対象部署, E:第1承認者, F:第2承認者
+  // データ範囲を取得（F列まで）
+  var values = masterSheet.getRange(2, 1, lastRow - 1, 6).getValues();
+  
+  // 承認対象の部署の設定を探す
+  // ※社員マスタの各行に部署の承認者が設定されている前提
+  // ※同じ部署の設定が複数行にある場合は、どれか1つでも一致すればOKとする
   
   for (var i = 0; i < values.length; i++) {
-    if (values[i][0] === department) {
-      if (approvalLevel === 'first' && values[i][1] === approverName) {
-        return true;
-      }
-      if (approvalLevel === 'second' && values[i][2] === approverName) {
-        return true;
+    var targetDept = values[i][3]; // D列: 承認対象部署
+    
+    // 承認対象部署が一致するか確認（空の場合はC列の所属部署を使うフォールバックも考慮可能だが、今回はD列厳守）
+    if (String(targetDept) === String(department)) {
+      var firstApprover = values[i][4];  // E列: 第1承認者
+      var secondApprover = values[i][5]; // F列: 第2承認者
+      
+      if (approvalLevel === 'first') {
+        // 第1承認者の名前と一致するか
+        if (String(firstApprover).trim() === String(approverName).trim()) {
+          return true;
+        }
+      } else if (approvalLevel === 'second') {
+        // 第2承認者の名前と一致するか
+        if (String(secondApprover).trim() === String(approverName).trim()) {
+          return true;
+        }
       }
     }
   }

@@ -60,7 +60,8 @@
 
         .form-group {
             flex: 1;
-            min-width: 200px;
+            min-width: 150px;
+            /* スマートフォンでの表示を考慮して最小幅を縮小 */
         }
 
         label {
@@ -74,6 +75,8 @@
         input,
         select {
             width: 100%;
+            max-width: 100%;
+            /* 親要素からはみ出さないように設定 */
             padding: 12px 16px;
             border: 2px solid #e0e0e0;
             border-radius: 12px;
@@ -362,11 +365,28 @@
                 display: none;
             }
         }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 15px;
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            opacity: 0.9;
+            transition: opacity 0.3s;
+        }
+
+        .back-link:hover {
+            opacity: 1;
+            text-decoration: underline;
+        }
     </style>
 </head>
 
 <body>
     <div class="container">
+        <a href="index.html" class="back-link">← 勤怠入力画面へ戻る</a>
         <div class="header">
             <h1>📋 月次勤怠確認・承認</h1>
             <p class="subtitle">部署ごとの打刻データを確認し、複数段階で承認を行います</p>
@@ -451,25 +471,30 @@
             const yearMonth = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
             document.getElementById('yearMonth').value = yearMonth;
 
-            // 部署一覧を読み込み
-            loadDepartments();
-
-            // LocalStorageからGAS URLを読み込み
-            const savedUrl = localStorage.getItem('gasWebAppUrl');
+            // LocalStorageからGAS URLを読み込み (キー名を統一)
+            const savedUrl = localStorage.getItem('attendance_gas_url');
             if (savedUrl) {
-                // URLが設定されている場合は使用
                 console.log('GAS URL loaded from localStorage');
+                // URLが保存されている場合のみ部署一覧を読み込む
+                loadDepartments();
+            } else {
+                showMessage('info', '設定画面でGAS WebアプリのURLを設定してください');
             }
         };
 
         // 部署一覧を読み込む
         function loadDepartments() {
-            const gasUrl = localStorage.getItem('gasWebAppUrl') || GAS_URL;
+            const gasUrl = localStorage.getItem('attendance_gas_url') || GAS_URL;
+
+            if (!gasUrl || gasUrl === 'YOUR_GAS_WEB_APP_URL') {
+                showMessage('error', 'GAS WebアプリのURLが設定されていません');
+                return;
+            }
 
             fetch(gasUrl, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'text/plain;charset=utf-8', // CORS対策でtext/plainに変更
                 },
                 body: JSON.stringify({
                     action: 'getDepartments'
@@ -479,6 +504,9 @@
                 .then(data => {
                     if (data.result === 'success') {
                         const select = document.getElementById('department');
+                        // 既存のオプションをクリア（デフォルト以外）
+                        select.innerHTML = '<option value="">部署を選択してください</option>';
+
                         data.departments.forEach(dept => {
                             const option = document.createElement('option');
                             option.value = dept;
@@ -522,12 +550,12 @@
             document.getElementById('dataArea').innerHTML = '<div class="loading"><div class="spinner"></div>データを読み込んでいます...</div>';
             document.getElementById('approvalStatusArea').style.display = 'none';
 
-            const gasUrl = localStorage.getItem('gasWebAppUrl') || GAS_URL;
+            const gasUrl = localStorage.getItem('attendance_gas_url') || GAS_URL;
 
             fetch(gasUrl, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'text/plain;charset=utf-8',
                 },
                 body: JSON.stringify({
                     action: 'getMonthlyData',
@@ -675,12 +703,12 @@
                 return;
             }
 
-            const gasUrl = localStorage.getItem('gasWebAppUrl') || GAS_URL;
+            const gasUrl = localStorage.getItem('attendance_gas_url') || GAS_URL;
 
             fetch(gasUrl, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'text/plain;charset=utf-8',
                 },
                 body: JSON.stringify({
                     action: 'recordApproval',
