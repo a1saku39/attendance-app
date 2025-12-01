@@ -15,6 +15,8 @@ function doPost(e) {
       return getEmployeesByDepartmentAndMonth(e);
     } else if (action === 'approveEmployee') {
       return approveEmployee(e);
+    } else if (action === 'getPersonalMonthlyData') {
+      return getPersonalMonthlyData(e);
     }
     
     // 以下、通常の打刻処理
@@ -839,6 +841,115 @@ function approveEmployee(e) {
       // ログ記録失敗は無視
     }
     
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'error',
+      message: error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// 個人の月次打刻データを取得する関数
+function getPersonalMonthlyData(e) {
+  try {
+    var jsonData = JSON.parse(e.postData.contents);
+    var employeeId = jsonData.employeeId;
+    var yearMonth = jsonData.yearMonth; // "2024-11" 形式
+    
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    
+    // 1. 社員マスタから部署を特定
+    var masterSheet = ss.getSheetByName('社員マスタ');
+    if (!masterSheet) {
+      return ContentService.createTextOutput(JSON.stringify({
+        result: 'error',
+        message: '社員マスタが見つかりません'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    var department = '';
+    var lastRow = masterSheet.getLastRow();
+    if (lastRow > 1) {
+      var values = masterSheet.getRange(2, 1, lastRow - 1, 3).getValues();
+      for (var i = 0; i < values.length; i++) {
+        if (String(values[i][0]) === String(employeeId)) {
+          department = values[i][2];
+          break;
+        }
+      }
+    }
+    
+    if (!department) {
+      return ContentService.createTextOutput(JSON.stringify({
+        result: 'error',
+        message: '社員コードに対応する部署が見つかりません'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // 2. 部署の打刻シートからデータを取得
+    var departmentSheetName = '打刻_' + department;
+    var logSheet = ss.getSheetByName(departmentSheetName);
+    
+    if (!logSheet) {
+      // シートがない場合はデータなしとして返す
+      return ContentService.createTextOutput(JSON.stringify({
+        result: 'success',
+        data: {}
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    var logLastRow = logSheet.getLastRow();
+    if (logLastRow <= 1) {
+      return ContentService.createTextOutput(JSON.stringify({
+        result: 'success',
+        data: {}
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    var logValues = logSheet.getRange(2, 1, logLastRow - 1, 9).getValues(); // I列(備考)まで取得
+    var personalData = {};
+    
+    // 年月を正規化（"2024-11" → "2024/11" の両方に対応）
+    var targetYearMonth1 = yearMonth; // "2024-11"
+    var targetYearMonth2 = yearMonth.replace('-', '/'); // "2024/11"
+    
+    for (var i = 0; i < logValues.length; i++) {
+      var logDate = logValues[i][0];
+      var logId = String(logValues[i][1]);
+      
+      // 社員IDチェック
+      if (logId !== String(employeeId)) continue;
+      
+      // 日付チェック
+      var formattedDate = '';
+      var dateKey = '';
+      
+      if (logDate instanceof Date) {
+        formattedDate = Utilities.formatDate(logDate, "Asia/Tokyo", "yyyy/MM");
+        dateKey = Utilities.formatDate(logDate, "Asia/Tokyo", "yyyy/MM/dd");
+      } else if (typeof logDate === 'string') {
+        formattedDate = logDate.substring(0, 7);
+        dateKey = logDate;
+      }
+      
+      if (formattedDate === targetYearMonth1 || formattedDate === targetYearMonth2) {
+        // 日付をキーにしてデータを格納
+        personalData[dateKey] = {
+          clockInType: logValues[i][3],
+          clockInTime: logValues[i][4] ? Utilities.formatDate(new Date(logValues[i][4]), "Asia/Tokyo", "HH:mm") : '',
+          clockOutType: logValues[i][5],
+          clockOutTime: logValues[i][6] ? Utilities.formatDate(new Date(logValues[i][6]), "Asia/Tokyo", "HH:mm") : '',
+          workingHours: logValues[i][7],
+          remarks: logValues[i][8]
+        };
+      }
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'success',
+      data: personalData
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
     return ContentService.createTextOutput(JSON.stringify({
       result: 'error',
       message: error.toString()

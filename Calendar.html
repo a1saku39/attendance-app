@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>月次勤怠カレンダー</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #1f2937;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 15px;
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            opacity: 0.9;
+            transition: opacity 0.3s;
+        }
+
+        .back-link:hover {
+            opacity: 1;
+            text-decoration: underline;
+        }
+
+        .header {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        h1 {
+            color: #4f46e5;
+            font-size: 24px;
+            margin: 0;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        input[type="month"] {
+            padding: 10px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type="month"]:focus {
+            border-color: #4f46e5;
+        }
+
+        .calendar-container {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 10px;
+        }
+
+        .calendar-header {
+            text-align: center;
+            font-weight: 700;
+            padding: 10px;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .calendar-day {
+            background: white;
+            border-radius: 12px;
+            padding: 10px;
+            min-height: 100px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e5e7eb;
+            transition: transform 0.2s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .calendar-day:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .calendar-day.empty {
+            background: transparent;
+            border: none;
+            box-shadow: none;
+        }
+
+        .calendar-day.today {
+            border: 2px solid #4f46e5;
+        }
+
+        .day-number {
+            font-weight: 700;
+            font-size: 16px;
+            margin-bottom: 8px;
+            color: #374151;
+        }
+
+        .day-number.sunday {
+            color: #ef4444;
+        }
+
+        .day-number.saturday {
+            color: #3b82f6;
+        }
+
+        .attendance-info {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 12px;
+        }
+
+        .status-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .status-in {
+            background-color: #10b981;
+        }
+
+        .status-out {
+            background-color: #f59e0b;
+        }
+
+        .time-text {
+            color: #4b5563;
+            font-family: monospace;
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .message.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .message.loading {
+            background: #e0e7ff;
+            color: #3730a3;
+        }
+
+        @media (max-width: 768px) {
+            .calendar-grid {
+                grid-template-columns: repeat(7, 1fr);
+                gap: 4px;
+            }
+
+            .calendar-day {
+                padding: 4px;
+                min-height: 60px;
+                border-radius: 8px;
+            }
+
+            .day-number {
+                font-size: 12px;
+                margin-bottom: 2px;
+            }
+
+            .status-row {
+                justify-content: center;
+            }
+
+            .time-text {
+                display: none;
+                /* モバイルでは時刻を非表示にしてドットだけにする */
+            }
+
+            .status-dot {
+                width: 6px;
+                height: 6px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← 勤怠入力画面へ戻る</a>
+
+        <div class="header">
+            <h1>📅 月次勤怠カレンダー</h1>
+            <div class="controls">
+                <input type="month" id="yearMonth" onchange="loadCalendarData()">
+            </div>
+        </div>
+
+        <div id="messageArea"></div>
+
+        <div class="calendar-container">
+            <div class="calendar-grid" id="calendarGrid">
+                <!-- JavaScriptで生成 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const GAS_URL = 'YOUR_GAS_WEB_APP_URL'; // 実際にはlocalStorageから取得
+
+        window.onload = function () {
+            // デフォルトで今月を選択
+            const today = new Date();
+            const yearMonth = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
+            document.getElementById('yearMonth').value = yearMonth;
+
+            // 社員コードの確認
+            const employeeId = localStorage.getItem('attendance_employee_id');
+            if (!employeeId) {
+                showMessage('error', '社員コードが登録されていません。トップページから一度打刻するか、社員コードを入力してください。');
+                return;
+            }
+
+            loadCalendarData();
+        };
+
+        function showMessage(type, text) {
+            const area = document.getElementById('messageArea');
+            area.innerHTML = `<div class="message ${type}">${text}</div>`;
+        }
+
+        function loadCalendarData() {
+            const yearMonth = document.getElementById('yearMonth').value;
+            const employeeId = localStorage.getItem('attendance_employee_id');
+            const gasUrl = localStorage.getItem('attendance_gas_url');
+
+            if (!gasUrl) {
+                showMessage('error', 'GAS WebアプリのURLが設定されていません。');
+                return;
+            }
+            if (!employeeId) {
+                showMessage('error', '社員コードが不明です。');
+                return;
+            }
+
+            showMessage('loading', 'データを読み込んでいます...');
+            const grid = document.getElementById('calendarGrid');
+            grid.innerHTML = ''; // クリア
+
+            fetch(gasUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({
+                    action: 'getPersonalMonthlyData',
+                    employeeId: employeeId,
+                    yearMonth: yearMonth
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.result === 'success') {
+                        document.getElementById('messageArea').innerHTML = ''; // メッセージクリア
+                        renderCalendar(yearMonth, data.data);
+                    } else {
+                        showMessage('error', 'データ取得エラー: ' + data.message);
+                    }
+                })
+                .catch(err => {
+                    showMessage('error', '通信エラー: ' + err.message);
+                });
+        }
+
+        function renderCalendar(yearMonth, attendanceData) {
+            const grid = document.getElementById('calendarGrid');
+            const [year, month] = yearMonth.split('-').map(Number);
+
+            // 曜日ヘッダー
+            const days = ['日', '月', '火', '水', '木', '金', '土'];
+            days.forEach((day, index) => {
+                const header = document.createElement('div');
+                header.className = 'calendar-header';
+                header.textContent = day;
+                if (index === 0) header.style.color = '#ef4444';
+                if (index === 6) header.style.color = '#3b82f6';
+                grid.appendChild(header);
+            });
+
+            // カレンダーの日付生成
+            const firstDay = new Date(year, month - 1, 1);
+            const lastDay = new Date(year, month, 0);
+            const startDayOfWeek = firstDay.getDay();
+            const daysInMonth = lastDay.getDate();
+
+            // 月初めの空白
+            for (let i = 0; i < startDayOfWeek; i++) {
+                const empty = document.createElement('div');
+                empty.className = 'calendar-day empty';
+                grid.appendChild(empty);
+            }
+
+            // 日付セル
+            const today = new Date();
+            const isCurrentMonth = today.getFullYear() === year && (today.getMonth() + 1) === month;
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateStr = `${year}/${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}`;
+                const dayData = attendanceData[dateStr];
+
+                const cell = document.createElement('div');
+                cell.className = 'calendar-day';
+
+                // 今日の強調
+                if (isCurrentMonth && day === today.getDate()) {
+                    cell.classList.add('today');
+                }
+
+                // 曜日の色判定
+                const currentDayOfWeek = (startDayOfWeek + day - 1) % 7;
+                let dayClass = '';
+                if (currentDayOfWeek === 0) dayClass = 'sunday';
+                if (currentDayOfWeek === 6) dayClass = 'saturday';
+
+                let html = `<div class="day-number ${dayClass}">${day}</div>`;
+
+                if (dayData) {
+                    html += `<div class="attendance-info">`;
+                    if (dayData.clockInTime) {
+                        html += `
+                            <div class="status-row">
+                                <span class="status-dot status-in"></span>
+                                <span class="time-text">${dayData.clockInTime}</span>
+                            </div>`;
+                    }
+                    if (dayData.clockOutTime) {
+                        html += `
+                            <div class="status-row">
+                                <span class="status-dot status-out"></span>
+                                <span class="time-text">${dayData.clockOutTime}</span>
+                            </div>`;
+                    }
+                    html += `</div>`;
+                }
+
+                cell.innerHTML = html;
+                grid.appendChild(cell);
+            }
+        }
+    </script>
+</body>
+
+</html>
