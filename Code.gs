@@ -69,7 +69,8 @@ function doPost(e) {
     }
     
     if (username.indexOf('未登録') !== -1) {
-      debugSheet.appendRow([new Date(), '警告: 社員コード ' + employeeId + ' はマスタに未登録です']);
+      debugSheet.appendRow([new Date(), '【重要】未登録社員の打刻: 社員コード=' + employeeId]);
+      // 未登録でも打刻_未設定シートに記録されるように処理は継続
     }
     
     // 2. 部署ごとの打刻データシートを取得
