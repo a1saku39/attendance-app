@@ -133,6 +133,109 @@
             font-size: 16px;
             margin-bottom: 8px;
             color: #374151;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            opacity: 0.9;
+            transition: opacity 0.3s;
+        }
+
+        .back-link:hover {
+            opacity: 1;
+            text-decoration: underline;
+        }
+
+        .header {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        h1 {
+            color: #4f46e5;
+            font-size: 24px;
+            margin: 0;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        input[type="month"] {
+            padding: 10px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type="month"]:focus {
+            border-color: #4f46e5;
+        }
+
+        .calendar-container {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 10px;
+        }
+
+        .calendar-header {
+            text-align: center;
+            font-weight: 700;
+            padding: 10px;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .calendar-day {
+            background: white;
+            border-radius: 12px;
+            padding: 10px;
+            min-height: 100px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e5e7eb;
+            transition: transform 0.2s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .calendar-day:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .calendar-day.empty {
+            background: transparent;
+            border: none;
+            box-shadow: none;
+        }
+
+        .calendar-day.today {
+            border: 2px solid #4f46e5;
+        }
+
+        .day-number {
+            font-weight: 700;
+            font-size: 16px;
+            margin-bottom: 8px;
+            color: #374151;
         }
 
         .day-number.sunday {
@@ -145,6 +248,67 @@
 
         .attendance-info {
             flex-grow: 1;
+        }
+
+        .detail-card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            margin-top: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            display: none;
+            /* 初期状態は非表示 */
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .detail-header {
+            font-size: 18px;
+            font-weight: 700;
+            color: #4f46e5;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f3f4f6;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 16px;
+        }
+
+        .detail-label {
+            color: #6b7280;
+            font-weight: 600;
+        }
+
+        .detail-value {
+            color: #1f2937;
+            font-weight: 700;
+            font-family: monospace;
+            font-size: 18px;
+        }
+
+        .calendar-day {
+            cursor: pointer;
+            /* クリック可能であることを示す */
+        }
+
+        .calendar-day.selected-day {
+            border: 2px solid #f59e0b;
+            background-color: #fffbeb;
         }
     </style>
 </head>
@@ -169,10 +333,35 @@
                 <!-- JavaScriptで生成 -->
             </div>
         </div>
+
+        <!-- 詳細表示エリア -->
+        <div id="detailArea" class="detail-card">
+            <div class="detail-header" id="detailDate"></div>
+            <div class="detail-content">
+                <div class="detail-row">
+                    <span class="detail-label">出勤時刻</span>
+                    <span class="detail-value" id="detailIn">--:--</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">退勤時刻</span>
+                    <span class="detail-value" id="detailOut">--:--</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">勤務時間</span>
+                    <span class="detail-value" id="detailWork">--:--</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">備考</span>
+                    <span class="detail-value" id="detailRemarks"
+                        style="font-size: 14px; font-family: sans-serif;">-</span>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
         const GAS_URL = 'YOUR_GAS_WEB_APP_URL'; // 実際にはlocalStorageから取得
+        let currentAttendanceData = {}; // データを保持しておく
 
         window.onload = function () {
             // デフォルトで今月を選択
@@ -226,6 +415,7 @@
             showMessage('loading', 'データを読み込んでいます...');
             const grid = document.getElementById('calendarGrid');
             grid.innerHTML = ''; // クリア
+            document.getElementById('detailArea').style.display = 'none'; // 詳細エリアを隠す
 
             fetch(gasUrl, {
                 method: 'POST',
@@ -240,6 +430,7 @@
                 .then(data => {
                     if (data.result === 'success') {
                         document.getElementById('messageArea').innerHTML = ''; // メッセージクリア
+                        currentAttendanceData = data.data; // データを保存
                         renderCalendar(yearMonth, data.data);
                     } else {
                         showMessage('error', 'データ取得エラー: ' + data.message);
@@ -288,6 +479,7 @@
 
                 const cell = document.createElement('div');
                 cell.className = 'calendar-day';
+                cell.onclick = () => showDetail(dateStr, dayData, cell); // クリックイベント追加
 
                 // 今日の強調
                 if (isCurrentMonth && day === today.getDate()) {
@@ -324,6 +516,37 @@
                 cell.innerHTML = html;
                 grid.appendChild(cell);
             }
+        }
+
+        function showDetail(dateStr, data, cellElement) {
+            // 選択状態のスタイル更新
+            document.querySelectorAll('.calendar-day').forEach(el => el.classList.remove('selected-day'));
+            cellElement.classList.add('selected-day');
+
+            const detailArea = document.getElementById('detailArea');
+            const [y, m, d] = dateStr.split('/');
+
+            // 日付表示
+            const dateObj = new Date(y, m - 1, d);
+            const days = ['日', '月', '火', '水', '木', '金', '土'];
+            const dayOfWeek = days[dateObj.getDay()];
+            document.getElementById('detailDate').textContent = `${y}年${m}月${d}日 (${dayOfWeek})`;
+
+            // データ表示
+            if (data) {
+                document.getElementById('detailIn').textContent = data.clockInTime || '--:--';
+                document.getElementById('detailOut').textContent = data.clockOutTime || '--:--';
+                document.getElementById('detailWork').textContent = data.workingHours || '--:--';
+                document.getElementById('detailRemarks').textContent = data.remarks || '-';
+            } else {
+                document.getElementById('detailIn').textContent = '--:--';
+                document.getElementById('detailOut').textContent = '--:--';
+                document.getElementById('detailWork').textContent = '--:--';
+                document.getElementById('detailRemarks').textContent = '-';
+            }
+
+            // 表示アニメーション
+            detailArea.style.display = 'block';
         }
     </script>
 </body>
