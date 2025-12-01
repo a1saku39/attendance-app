@@ -6,8 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusMessage = document.getElementById('status-message');
     const gasUrlInput = document.getElementById('gas-url');
     const saveSettingsBtn = document.getElementById('save-settings');
-    const clockInTimeInput = document.getElementById('clock-in-time');
-    const clockOutTimeInput = document.getElementById('clock-out-time');
+    const customTimeInput = document.getElementById('custom-time');
     const remarksInput = document.getElementById('remarks');
 
 
@@ -69,16 +68,9 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             // GASへの送信データ
             let timestamp;
-            let targetTimeInput;
 
-            if (type === 'in') {
-                targetTimeInput = clockInTimeInput;
-            } else {
-                targetTimeInput = clockOutTimeInput;
-            }
-
-            if (targetTimeInput && targetTimeInput.value) {
-                timestamp = new Date(targetTimeInput.value).toISOString();
+            if (customTimeInput && customTimeInput.value) {
+                timestamp = new Date(customTimeInput.value).toISOString();
             } else {
                 timestamp = new Date().toISOString();
             }
@@ -107,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 showMessage(`${actionText}を記録しました！`, 'success');
 
                 // 入力値をクリア
-                if (targetTimeInput) targetTimeInput.value = '';
+                if (customTimeInput) customTimeInput.value = '';
                 remarksInput.value = '';
 
 

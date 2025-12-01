@@ -31,30 +31,23 @@
                 <input type="text" id="employee-id" placeholder="社員コードを入力" inputmode="numeric">
             </div>
 
-            <div class="attendance-actions">
-                <div class="action-group">
-                    <h3>出勤</h3>
-                    <div class="user-input-group">
-                        <label for="clock-in-time">出勤時刻 (任意)</label>
-                        <input type="datetime-local" id="clock-in-time">
-                    </div>
-                    <button id="clock-in-btn" class="action-btn check-in">
-                        <span class="icon">☀️</span>
-                        出勤
-                    </button>
-                </div>
+            <div class="user-input-group">
+                <label for="custom-time">時刻指定 (任意)</label>
+                <input type="datetime-local" id="custom-time">
+                <small style="color: #6b7280; font-size: 0.875rem; margin-top: 4px; display: block;">
+                    空欄の場合は現在時刻で記録されます
+                </small>
+            </div>
 
-                <div class="action-group">
-                    <h3>退勤</h3>
-                    <div class="user-input-group">
-                        <label for="clock-out-time">退勤時刻 (任意)</label>
-                        <input type="datetime-local" id="clock-out-time">
-                    </div>
-                    <button id="clock-out-btn" class="action-btn check-out">
-                        <span class="icon">🌙</span>
-                        退勤
-                    </button>
-                </div>
+            <div class="attendance-actions" style="display: flex; gap: 15px; flex-wrap: wrap;">
+                <button id="clock-in-btn" class="action-btn check-in" style="flex: 1; min-width: 200px;">
+                    <span class="icon">☀️</span>
+                    出勤
+                </button>
+                <button id="clock-out-btn" class="action-btn check-out" style="flex: 1; min-width: 200px;">
+                    <span class="icon">🌙</span>
+                    退勤
+                </button>
             </div>
 
             <div class="user-input-group">
