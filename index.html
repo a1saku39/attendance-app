@@ -39,15 +39,25 @@
                 </small>
             </div>
 
-            <div class="attendance-actions" style="display: flex; gap: 15px; flex-wrap: wrap;">
-                <button id="clock-in-btn" class="action-btn check-in" style="flex: 1; min-width: 200px;">
-                    <span class="icon">☀️</span>
-                    出勤
-                </button>
-                <button id="clock-out-btn" class="action-btn check-out" style="flex: 1; min-width: 200px;">
-                    <span class="icon">🌙</span>
-                    退勤
-                </button>
+            <div class="attendance-actions" style="display: flex; gap: 15px; flex-wrap: wrap; align-items: stretch;">
+                <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 8px;">
+                    <button id="clock-in-btn" class="action-btn check-in">
+                        <span class="icon">☀️</span>
+                        出勤
+                    </button>
+                    <div id="clock-in-display"
+                        style="text-align: center; font-size: 0.875rem; color: #059669; font-weight: 600; min-height: 20px;">
+                    </div>
+                </div>
+                <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 8px;">
+                    <button id="clock-out-btn" class="action-btn check-out">
+                        <span class="icon">🌙</span>
+                        退勤
+                    </button>
+                    <div id="clock-out-display"
+                        style="text-align: center; font-size: 0.875rem; color: #dc2626; font-weight: 600; min-height: 20px;">
+                    </div>
+                </div>
             </div>
 
             <div class="user-input-group">
