@@ -145,86 +145,6 @@
 
         .attendance-info {
             flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            font-size: 12px;
-        }
-
-        .status-row {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
-
-        .status-in {
-            background-color: #10b981;
-        }
-
-        .status-out {
-            background-color: #f59e0b;
-        }
-
-        .time-text {
-            color: #4b5563;
-            font-family: monospace;
-        }
-
-        .message {
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            text-align: center;
-            font-weight: 600;
-        }
-
-        .message.error {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-
-        .message.loading {
-            background: #e0e7ff;
-            color: #3730a3;
-        }
-
-        @media (max-width: 768px) {
-            .calendar-grid {
-                grid-template-columns: repeat(7, 1fr);
-                gap: 4px;
-            }
-
-            .calendar-day {
-                padding: 4px;
-                min-height: 60px;
-                border-radius: 8px;
-            }
-
-            .day-number {
-                font-size: 12px;
-                margin-bottom: 2px;
-            }
-
-            .status-row {
-                justify-content: center;
-            }
-
-            .time-text {
-                display: none;
-                /* モバイルでは時刻を非表示にしてドットだけにする */
-            }
-
-            .status-dot {
-                width: 6px;
-                height: 6px;
-            }
         }
     </style>
 </head>
@@ -236,7 +156,9 @@
         <div class="header">
             <h1>📅 月次勤怠カレンダー</h1>
             <div class="controls">
+                <button class="month-btn" onclick="changeMonth(-1)">＜</button>
                 <input type="month" id="yearMonth" onchange="loadCalendarData()">
+                <button class="month-btn" onclick="changeMonth(1)">＞</button>
             </div>
         </div>
 
@@ -271,6 +193,20 @@
         function showMessage(type, text) {
             const area = document.getElementById('messageArea');
             area.innerHTML = `<div class="message ${type}">${text}</div>`;
+        }
+
+        function changeMonth(offset) {
+            const input = document.getElementById('yearMonth');
+            if (!input.value) return;
+
+            const [year, month] = input.value.split('-').map(Number);
+            const date = new Date(year, month - 1 + offset, 1);
+
+            const newYear = date.getFullYear();
+            const newMonth = String(date.getMonth() + 1).padStart(2, '0');
+
+            input.value = `${newYear}-${newMonth}`;
+            loadCalendarData();
         }
 
         function loadCalendarData() {
