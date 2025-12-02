@@ -9,7 +9,7 @@ function doPost(e) {
     }
 
     // バージョン確認用ログ (v2.0)
-    debugSheet.appendRow([new Date(), '=== doPost実行 (v2.0) ===']);
+    debugSheet.appendRow([new Date(), '[INFO] doPost実行 (v2.0)']);
     debugSheet.appendRow([new Date(), '受信データ: ' + e.postData.contents]);
 
     // APIエンドポイントの振り分け
@@ -55,7 +55,10 @@ function doPost(e) {
     var timestamp = new Date(jsonData.timestamp);
     var remarks = jsonData.remarks || ''; // 備考
     
+    // 時刻変換のデバッグログ
+    var debugTimeStr = Utilities.formatDate(timestamp, "Asia/Tokyo", "yyyy/MM/dd HH:mm:ss");
     debugSheet.appendRow([new Date(), '社員コード: ' + employeeId + ', アクション: ' + action]);
+    debugSheet.appendRow([new Date(), '受信タイムスタンプ(UTC): ' + jsonData.timestamp + ', JST変換後: ' + debugTimeStr]);
     
     // 1. 社員マスタから名前と部署を検索
     var masterSheet = ss.getSheetByName('社員マスタ');
@@ -380,97 +383,107 @@ function getMonthlyData(e) {
   }
 }
 
-// 承認状態を取得する関数
-function getApprovalStatus(department, yearMonth) {
+// 承認状態を取得する関数（個人単位）
+function getApprovalStatus(employeeId, yearMonth) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var approvalSheet = ss.getSheetByName('月次承認記録');
+  var approvalSheet = ss.getSheetByName('月次承認記録_個人');
   
   if (!approvalSheet) {
     return {
-      status: 'not_approved',
-      firstApprover: null,
-      firstApprovalDate: null,
-      secondApprover: null,
-      secondApprovalDate: null
+      self: null, // 本人確認
+      boss: null  // 上長承認
     };
   }
   
   var lastRow = approvalSheet.getLastRow();
   if (lastRow <= 1) {
-    return {
-      status: 'not_approved',
-      firstApprover: null,
-      firstApprovalDate: null,
-      secondApprover: null,
-      secondApprovalDate: null
-    };
+    return { self: null, boss: null };
   }
   
   var values = approvalSheet.getRange(2, 1, lastRow - 1, 6).getValues();
+  // A:年月, B:社員ID, C:本人確認者, D:本人確認日時, E:承認者, F:承認日時
   
-  // 該当する部署と年月のレコードを検索
   for (var i = values.length - 1; i >= 0; i--) {
-    if (values[i][0] === department && values[i][1] === yearMonth) {
-      var status = 'not_approved';
-      if (values[i][4]) {
-        status = 'fully_approved'; // 第2承認済み
-      } else if (values[i][2]) {
-        status = 'first_approved'; // 第1承認済み
-      }
-      
+    if (String(values[i][1]) === String(employeeId) && values[i][0] === yearMonth) {
       return {
-        status: status,
-        firstApprover: values[i][2] || null,
-        firstApprovalDate: values[i][3] ? Utilities.formatDate(new Date(values[i][3]), "Asia/Tokyo", "yyyy/MM/dd HH:mm") : null,
-        secondApprover: values[i][4] || null,
-        secondApprovalDate: values[i][5] ? Utilities.formatDate(new Date(values[i][5]), "Asia/Tokyo", "yyyy/MM/dd HH:mm") : null
+        self: values[i][2] ? { name: values[i][2], date: values[i][3] } : null,
+        boss: values[i][4] ? { name: values[i][4], date: values[i][5] } : null
       };
     }
   }
   
-  return {
-    status: 'not_approved',
-    firstApprover: null,
-    firstApprovalDate: null,
-    secondApprover: null,
-    secondApprovalDate: null
-  };
+  return { self: null, boss: null };
 }
 
-// 承認を記録する関数
+// 承認を記録する関数（個人単位）
 function recordApproval(e) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var jsonData = JSON.parse(e.postData.contents);
-    var department = jsonData.department;
-    var yearMonth = jsonData.yearMonth;
-    var approverName = jsonData.approverName;
-    var approvalLevel = jsonData.approvalLevel; // 'first' or 'second'
     
-    // 承認者マスタで権限を確認
-    var hasPermission = checkApproverPermission(department, approverName, approvalLevel);
-    if (!hasPermission) {
+    var targetEmployeeId = jsonData.targetEmployeeId; // 承認対象の社員ID
+    var yearMonth = jsonData.yearMonth;
+    var approverId = jsonData.approverId; // 操作している人のID
+    var type = jsonData.type; // 'self' (本人確認) or 'boss' (承認)
+    
+    // 1. 操作している人の情報を取得（印鑑用）
+    var masterSheet = ss.getSheetByName('社員マスタ');
+    var approverInfo = getEmployeeInfo(masterSheet, approverId);
+    
+    if (!approverInfo) {
       return ContentService.createTextOutput(JSON.stringify({
         result: 'error',
-        message: 'この部署の' + (approvalLevel === 'first' ? '第1' : '第2') + '承認者として登録されていません'
+        message: '操作者の情報がマスタに見つかりません'
       })).setMimeType(ContentService.MimeType.JSON);
     }
     
-    // 月次承認記録シートを取得または作成
-    var approvalSheet = ss.getSheetByName('月次承認記録');
+    // 印鑑用テキスト（マスタに印鑑列があればそれを使う、なければ氏名）
+    var stampName = approverInfo.stampName || approverInfo.name;
+    
+    // 2. 権限チェック
+    if (type === 'self') {
+      // 本人確認は本人のみ
+      if (String(targetEmployeeId) !== String(approverId)) {
+        return ContentService.createTextOutput(JSON.stringify({
+          result: 'error',
+          message: '本人以外のデータに担当者印は押せません'
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+    } else if (type === 'boss') {
+      // 承認は、対象者の「第1承認者」として登録されている人のみ
+      var targetInfo = getEmployeeInfo(masterSheet, targetEmployeeId);
+      if (!targetInfo) {
+         return ContentService.createTextOutput(JSON.stringify({
+          result: 'error',
+          message: '対象者の情報が見つかりません'
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+      
+      // マスタの第1承認者名と、操作者の氏名が一致するか確認
+      // ※より厳密にはIDで紐付けるべきですが、現状のマスタ構造に合わせて名前一致で判定
+      if (targetInfo.firstApprover !== approverInfo.name) {
+         return ContentService.createTextOutput(JSON.stringify({
+          result: 'error',
+          message: 'あなたはこの社員の承認権限を持っていません'
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+    }
+    
+    // 3. 記録
+    var approvalSheet = ss.getSheetByName('月次承認記録_個人');
     if (!approvalSheet) {
-      approvalSheet = ss.insertSheet('月次承認記録');
-      approvalSheet.appendRow(['部署', '年月', '第1承認者', '第1承認日時', '第2承認者', '第2承認日時']);
+      approvalSheet = ss.insertSheet('月次承認記録_個人');
+      approvalSheet.appendRow(['年月', '社員ID', '本人確認者', '本人確認日時', '承認者', '承認日時']);
     }
     
     var lastRow = approvalSheet.getLastRow();
     var foundRow = -1;
     
-    // 既存のレコードを検索
+    // 既存レコード検索
     if (lastRow > 1) {
       var values = approvalSheet.getRange(2, 1, lastRow - 1, 2).getValues();
       for (var i = 0; i < values.length; i++) {
-        if (values[i][0] === department && values[i][1] === yearMonth) {
+        if (values[i][0] === yearMonth && String(values[i][1]) === String(targetEmployeeId)) {
           foundRow = i + 2;
           break;
         }
@@ -480,35 +493,35 @@ function recordApproval(e) {
     var now = new Date();
     
     if (foundRow > 0) {
-      // 既存レコードを更新
-      if (approvalLevel === 'first') {
-        approvalSheet.getRange(foundRow, 3).setValue(approverName);
+      // 更新
+      if (type === 'self') {
+        approvalSheet.getRange(foundRow, 3).setValue(stampName);
         approvalSheet.getRange(foundRow, 4).setValue(now);
-      } else if (approvalLevel === 'second') {
-        // 第2承認の前に第1承認が必要
-        var firstApprover = approvalSheet.getRange(foundRow, 3).getValue();
-        if (!firstApprover) {
+      } else if (type === 'boss') {
+        // 本人確認がまだならエラー
+        var selfCheck = approvalSheet.getRange(foundRow, 3).getValue();
+        if (!selfCheck) {
           return ContentService.createTextOutput(JSON.stringify({
             result: 'error',
-            message: '第1承認が完了していません'
+            message: '本人確認が完了していません'
           })).setMimeType(ContentService.MimeType.JSON);
         }
-        approvalSheet.getRange(foundRow, 5).setValue(approverName);
+        approvalSheet.getRange(foundRow, 5).setValue(stampName);
         approvalSheet.getRange(foundRow, 6).setValue(now);
       }
     } else {
-      // 新規レコードを追加
-      if (approvalLevel === 'second') {
+      // 新規
+      if (type === 'boss') {
         return ContentService.createTextOutput(JSON.stringify({
           result: 'error',
-          message: '第1承認が完了していません'
+          message: '本人確認が完了していません'
         })).setMimeType(ContentService.MimeType.JSON);
       }
       
       approvalSheet.appendRow([
-        department,
         yearMonth,
-        approverName,
+        targetEmployeeId,
+        stampName,
         now,
         '',
         ''
@@ -517,8 +530,8 @@ function recordApproval(e) {
     
     return ContentService.createTextOutput(JSON.stringify({
       result: 'success',
-      message: (approvalLevel === 'first' ? '第1' : '第2') + '承認を記録しました',
-      approvalStatus: getApprovalStatus(department, yearMonth)
+      message: (type === 'self' ? '担当者印' : '承認印') + 'を押しました',
+      stampData: { name: stampName, date: now }
     })).setMimeType(ContentService.MimeType.JSON);
     
   } catch (error) {
@@ -529,52 +542,32 @@ function recordApproval(e) {
   }
 }
 
-// 承認者の権限を確認する関数
-function checkApproverPermission(department, approverName, approvalLevel) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var masterSheet = ss.getSheetByName('社員マスタ');
+// ヘルパー: 社員情報を取得
+function getEmployeeInfo(sheet, id) {
+  var lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return null;
   
-  if (!masterSheet) {
-    return false;
-  }
-  
-  var lastRow = masterSheet.getLastRow();
-  if (lastRow <= 1) {
-    return false;
-  }
-  
-  // 社員マスタ: A:コード, B:氏名, C:部署, D:承認対象部署, E:第1承認者, F:第2承認者
-  // データ範囲を取得（F列まで）
-  var values = masterSheet.getRange(2, 1, lastRow - 1, 6).getValues();
-  
-  // 承認対象の部署の設定を探す
-  // ※社員マスタの各行に部署の承認者が設定されている前提
-  // ※同じ部署の設定が複数行にある場合は、どれか1つでも一致すればOKとする
+  var values = sheet.getRange(2, 1, lastRow - 1, 8).getValues(); // H列(印鑑)まで取得想定
   
   for (var i = 0; i < values.length; i++) {
-    var targetDept = values[i][3]; // D列: 承認対象部署
-    
-    // 承認対象部署が一致するか確認（空の場合はC列の所属部署を使うフォールバックも考慮可能だが、今回はD列厳守）
-    if (String(targetDept) === String(department)) {
-      var firstApprover = values[i][4];  // E列: 第1承認者
-      var secondApprover = values[i][5]; // F列: 第2承認者
-      
-      if (approvalLevel === 'first') {
-        // 第1承認者の名前と一致するか
-        if (String(firstApprover).trim() === String(approverName).trim()) {
-          return true;
-        }
-      } else if (approvalLevel === 'second') {
-        // 第2承認者の名前と一致するか
-        if (String(secondApprover).trim() === String(approverName).trim()) {
-          return true;
-        }
-      }
+    if (String(values[i][0]) === String(id)) {
+      return {
+        id: values[i][0],
+        name: values[i][1],
+        department: values[i][2],
+        firstApprover: values[i][4],
+        stampName: values[i][7] // H列を印鑑データと仮定
+      };
     }
   }
-  
-  return false;
+  return null;
 }
+
+// 承認者の権限を確認する関数（今回はrecordApproval内で処理するためダミー化または削除）
+function checkApproverPermission(department, approverName, approvalLevel) {
+  return false; 
+}
+
 
 // 部署一覧を取得する関数
 function getDepartments() {
@@ -949,22 +942,34 @@ function getPersonalMonthlyData(e) {
       }
       
       if (formattedDate === targetYearMonth1 || formattedDate === targetYearMonth2) {
+        // 時刻データのフォーマット処理
+        var formatTime = function(timeVal) {
+          if (!timeVal) return '';
+          if (timeVal instanceof Date) {
+            return Utilities.formatDate(timeVal, "Asia/Tokyo", "HH:mm");
+          }
+          return String(timeVal);
+        };
+
         // 日付をキーにしてデータを格納
-        // 時刻データは既に "HH:mm" 形式の文字列として保存されているため、そのまま使用
         personalData[dateKey] = {
           clockInType: logValues[i][3],
-          clockInTime: logValues[i][4] || '',
+          clockInTime: formatTime(logValues[i][4]),
           clockOutType: logValues[i][5],
-          clockOutTime: logValues[i][6] || '',
+          clockOutTime: formatTime(logValues[i][6]),
           workingHours: logValues[i][7],
           remarks: logValues[i][8]
         };
       }
     }
     
+    // 承認状態を取得
+    var approvalStatus = getApprovalStatus(employeeId, yearMonth);
+    
     return ContentService.createTextOutput(JSON.stringify({
       result: 'success',
-      data: personalData
+      data: personalData,
+      approvalStatus: approvalStatus
     })).setMimeType(ContentService.MimeType.JSON);
     
   } catch (error) {

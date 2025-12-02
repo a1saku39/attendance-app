@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>月次勤怠確認・承認</title>
+    <title>月次勤怠確認</title>
     <style>
         * {
             margin: 0;
@@ -20,7 +20,7 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1000px;
             margin: 0 auto;
         }
 
@@ -76,7 +76,7 @@
 
         .form-group {
             flex: 1;
-            min-width: 120px;
+            min-width: 150px;
         }
 
         label {
@@ -90,7 +90,6 @@
         input,
         select {
             width: 100%;
-            max-width: 100%;
             padding: 12px 16px;
             border: 2px solid #e0e0e0;
             border-radius: 12px;
@@ -125,105 +124,152 @@
             box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
         }
 
-        .btn-success {
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-            color: white;
-            padding: 8px 20px;
-            font-size: 14px;
-        }
-
-        .btn-success:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(17, 153, 142, 0.4);
-        }
-
-        .btn-success:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .data-table {
+        .data-card {
             background: white;
             border-radius: 20px;
-            padding: 25px;
+            padding: 30px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-            overflow-x: auto;
+            margin-bottom: 20px;
         }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            margin-bottom: 30px;
         }
 
-        th {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 15px;
-            text-align: left;
+        .calendar-header {
+            text-align: center;
             font-weight: 600;
-            font-size: 14px;
+            padding: 10px;
+            background: #f8f9ff;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #667eea;
         }
 
-        th:first-child {
-            border-radius: 12px 0 0 0;
+        .calendar-day {
+            aspect-ratio: 1;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 8px;
+            font-size: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: all 0.2s;
         }
 
-        th:last-child {
-            border-radius: 0 12px 0 0;
+        .calendar-day:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
         }
 
-        td {
-            padding: 12px 15px;
-            border-bottom: 1px solid #f0f0f0;
-            font-size: 14px;
+        .calendar-day.has-data {
+            background: #f8f9ff;
+            border-color: #667eea;
+        }
+
+        .calendar-day.weekend {
+            background: #fff5f5;
+        }
+
+        .day-number {
+            font-weight: 600;
             color: #333;
         }
 
-        tr:hover {
-            background: #f8f9ff;
+        .day-times {
+            font-size: 10px;
+            color: #666;
+            line-height: 1.4;
         }
 
-        .status-badge {
-            display: inline-block;
-            width: 30px;
-            height: 30px;
-            line-height: 30px;
-            text-align: center;
-            border-radius: 50%;
-            font-weight: bold;
-            font-size: 18px;
+        .approval-section {
+            border-top: 2px solid #e0e0e0;
+            padding-top: 30px;
+            margin-top: 30px;
         }
 
-        .status-ok {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .status-ng {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        .approved-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            background: #d4edda;
-            color: #155724;
-            border-radius: 12px;
-            font-size: 12px;
+        .approval-title {
+            font-size: 20px;
             font-weight: 600;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: #999;
-        }
-
-        .empty-state-icon {
-            font-size: 64px;
+            color: #333;
             margin-bottom: 20px;
+        }
+
+        .stamp-container {
+            display: flex;
+            gap: 40px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .stamp-box {
+            flex: 1;
+            min-width: 200px;
+            border: 3px dashed #e0e0e0;
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+        }
+
+        .stamp-box.stamped {
+            border-color: #dc3545;
+            background: #fff5f5;
+        }
+
+        .stamp-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .stamp {
+            width: 100px;
+            height: 100px;
+            border: 4px solid #dc3545;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+            color: #dc3545;
+            transform: rotate(-15deg);
+            margin: 10px 0;
+        }
+
+        .stamp-date {
+            font-size: 11px;
+            color: #999;
+            margin-top: 8px;
+        }
+
+        .stamp-button {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .stamp-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(220, 53, 69, 0.4);
+        }
+
+        .stamp-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
         }
 
         .message {
@@ -293,17 +339,22 @@
         }
 
         @media (max-width: 768px) {
-            .control-group {
+            .calendar-grid {
+                gap: 4px;
+            }
+
+            .calendar-day {
+                padding: 4px;
+                font-size: 10px;
+            }
+
+            .stamp-container {
                 flex-direction: column;
+                gap: 20px;
             }
 
-            .form-group {
-                width: 100%;
-                min-width: 0;
-            }
-
-            button {
-                width: 100%;
+            .stamp-box {
+                min-width: 100%;
             }
         }
     </style>
@@ -313,8 +364,8 @@
     <div class="container">
         <a href="index.html" class="back-link">← 勤怠入力画面へ戻る</a>
         <div class="header">
-            <h1>📋 月次勤怠確認・承認</h1>
-            <p class="subtitle">部署ごとの社員の打刻状況を確認し、個別に承認を行います</p>
+            <h1>📋 月次勤怠確認</h1>
+            <p class="subtitle">自分の勤怠データを確認し、担当者印を押してください</p>
         </div>
 
         <div id="messageArea"></div>
@@ -322,16 +373,14 @@
         <div class="controls">
             <div class="control-group">
                 <div class="form-group">
-                    <label for="department">部署</label>
-                    <select id="department">
-                        <option value="">部署を選択してください</option>
-                    </select>
+                    <label for="employeeId">社員コード</label>
+                    <input type="text" id="employeeId" placeholder="社員コードを入力">
                 </div>
                 <div class="form-group">
                     <label for="yearMonth">年月</label>
                     <input type="month" id="yearMonth">
                 </div>
-                <button class="btn-primary" onclick="loadEmployeeList()">社員一覧を表示</button>
+                <button class="btn-primary" onclick="loadMonthlyData()">データを表示</button>
             </div>
         </div>
 
@@ -341,8 +390,9 @@
     <script>
         const GAS_URL = 'YOUR_GAS_WEB_APP_URL';
 
-        let currentDepartment = '';
+        let currentEmployeeId = '';
         let currentYearMonth = '';
+        let currentApprovalStatus = null;
 
         // ページ読み込み時の初期化
         window.onload = function () {
@@ -351,62 +401,20 @@
             const yearMonth = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
             document.getElementById('yearMonth').value = yearMonth;
 
-            // LocalStorageからGAS URLを読み込み
-            const savedUrl = localStorage.getItem('attendance_gas_url');
-            if (savedUrl) {
-                console.log('GAS URL loaded from localStorage');
-                loadDepartments();
-            } else {
-                showMessage('info', '設定画面でGAS WebアプリのURLを設定してください');
+            // LocalStorageから社員コードを読み込み
+            const savedEmployeeId = localStorage.getItem('attendance_employee_id');
+            if (savedEmployeeId) {
+                document.getElementById('employeeId').value = savedEmployeeId;
             }
         };
 
-        // 部署一覧を読み込む
-        function loadDepartments() {
-            const gasUrl = localStorage.getItem('attendance_gas_url') || GAS_URL;
-
-            if (!gasUrl || gasUrl === 'YOUR_GAS_WEB_APP_URL') {
-                showMessage('error', 'GAS WebアプリのURLが設定されていません');
-                return;
-            }
-
-            fetch(gasUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'text/plain;charset=utf-8',
-                },
-                body: JSON.stringify({
-                    action: 'getDepartments'
-                })
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.result === 'success') {
-                        const select = document.getElementById('department');
-                        select.innerHTML = '<option value="">部署を選択してください</option>';
-
-                        data.departments.forEach(dept => {
-                            const option = document.createElement('option');
-                            option.value = dept;
-                            option.textContent = dept;
-                            select.appendChild(option);
-                        });
-                    } else {
-                        showMessage('error', '部署一覧の取得に失敗しました: ' + data.message);
-                    }
-                })
-                .catch(error => {
-                    showMessage('error', 'エラーが発生しました: ' + error.message);
-                });
-        }
-
-        // 社員一覧を読み込む
-        function loadEmployeeList() {
-            const department = document.getElementById('department').value;
+        // 月次データを読み込む
+        function loadMonthlyData() {
+            const employeeId = document.getElementById('employeeId').value.trim();
             const yearMonth = document.getElementById('yearMonth').value;
 
-            if (!department) {
-                showMessage('error', '部署を選択してください');
+            if (!employeeId) {
+                showMessage('error', '社員コードを入力してください');
                 return;
             }
 
@@ -415,13 +423,22 @@
                 return;
             }
 
-            currentDepartment = department;
+            currentEmployeeId = employeeId;
             currentYearMonth = yearMonth;
+
+            // LocalStorageに保存
+            localStorage.setItem('attendance_employee_id', employeeId);
 
             // ローディング表示
             document.getElementById('dataArea').innerHTML = '<div class="loading"><div class="spinner"></div>データを読み込んでいます...</div>';
 
             const gasUrl = localStorage.getItem('attendance_gas_url') || GAS_URL;
+
+            if (!gasUrl || gasUrl === 'YOUR_GAS_WEB_APP_URL') {
+                showMessage('error', 'GAS WebアプリのURLが設定されていません');
+                document.getElementById('dataArea').innerHTML = '';
+                return;
+            }
 
             fetch(gasUrl, {
                 method: 'POST',
@@ -429,15 +446,16 @@
                     'Content-Type': 'text/plain;charset=utf-8',
                 },
                 body: JSON.stringify({
-                    action: 'getEmployeesByDepartmentAndMonth',
-                    department: department,
+                    action: 'getPersonalMonthlyData',
+                    employeeId: employeeId,
                     yearMonth: yearMonth
                 })
             })
                 .then(response => response.json())
                 .then(data => {
                     if (data.result === 'success') {
-                        displayEmployeeList(data.employees);
+                        currentApprovalStatus = data.approvalStatus;
+                        displayMonthlyData(data.data, yearMonth);
                     } else {
                         showMessage('error', 'データの取得に失敗しました: ' + data.message);
                         document.getElementById('dataArea').innerHTML = '';
@@ -449,72 +467,94 @@
                 });
         }
 
-        // 社員一覧を表示
-        function displayEmployeeList(employees) {
+        // 月次データを表示
+        function displayMonthlyData(data, yearMonth) {
             const dataArea = document.getElementById('dataArea');
 
-            if (employees.length === 0) {
-                dataArea.innerHTML = `
-                    <div class="data-table">
-                        <div class="empty-state">
-                            <div class="empty-state-icon">📭</div>
-                            <div>この部署に社員が登録されていません</div>
-                        </div>
-                    </div>
-                `;
-                return;
-            }
+            // カレンダーを生成
+            const [year, month] = yearMonth.split('-').map(Number);
+            const daysInMonth = new Date(year, month, 0).getDate();
+            const firstDay = new Date(year, month - 1, 1).getDay();
 
-            let html = `
-                <div class="data-table">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>社員コード</th>
-                                <th>氏名</th>
-                                <th>打刻状況</th>
-                                <th>打刻日数</th>
-                                <th>承認状態</th>
-                                <th>操作</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+            let calendarHtml = `
+                <div class="data-card">
+                    <h2 style="margin-bottom: 20px; color: #333;">${year}年${month}月の勤怠</h2>
+                    <div class="calendar-grid">
+                        <div class="calendar-header">日</div>
+                        <div class="calendar-header">月</div>
+                        <div class="calendar-header">火</div>
+                        <div class="calendar-header">水</div>
+                        <div class="calendar-header">木</div>
+                        <div class="calendar-header">金</div>
+                        <div class="calendar-header">土</div>
             `;
 
-            employees.forEach(emp => {
-                const statusClass = emp.attendanceStatus === '○' ? 'status-ok' : 'status-ng';
-                const approvedBadge = emp.approved ? '<span class="approved-badge">承認済み</span>' : '';
-                const buttonDisabled = emp.approved ? 'disabled' : '';
-                const attendanceInfo = emp.workDays ? `${emp.attendanceDays}/${emp.workDays}日` : '-';
+            // 空白セル
+            for (let i = 0; i < firstDay; i++) {
+                calendarHtml += '<div></div>';
+            }
 
-                html += `
-                    <tr>
-                        <td>${emp.employeeId}</td>
-                        <td>${emp.name}</td>
-                        <td><span class="status-badge ${statusClass}">${emp.attendanceStatus}</span></td>
-                        <td>${attendanceInfo}</td>
-                        <td>${approvedBadge}</td>
-                        <td>
-                            <button class="btn-success" onclick="approveEmployee('${emp.employeeId}', '${emp.name}')" ${buttonDisabled}>
-                                承認
-                            </button>
-                        </td>
-                    </tr>
+            // 日付セル
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateStr = `${year}/${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}`;
+                const dayData = data[dateStr];
+                const dayOfWeek = new Date(year, month - 1, day).getDay();
+                const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+                let dayClass = 'calendar-day';
+                if (isWeekend) dayClass += ' weekend';
+                if (dayData && (dayData.clockInTime || dayData.clockOutTime)) dayClass += ' has-data';
+
+                let timesHtml = '';
+                if (dayData) {
+                    if (dayData.clockInTime) timesHtml += `出: ${dayData.clockInTime}<br>`;
+                    if (dayData.clockOutTime) timesHtml += `退: ${dayData.clockOutTime}`;
+                }
+
+                calendarHtml += `
+                    <div class="${dayClass}">
+                        <div class="day-number">${day}</div>
+                        <div class="day-times">${timesHtml}</div>
+                    </div>
                 `;
-            });
+            }
 
-            html += `
-                        </tbody>
-                    </table>
+            calendarHtml += `
+                    </div>
+                    
+                    <div class="approval-section">
+                        <div class="approval-title">📝 承認欄</div>
+                        <div class="stamp-container">
+                            <div class="stamp-box ${currentApprovalStatus.self ? 'stamped' : ''}">
+                                <div class="stamp-label">担当者印</div>
+                                ${currentApprovalStatus.self ?
+                    `<div class="stamp">${currentApprovalStatus.self.name}</div>
+                                     <div class="stamp-date">${formatDate(currentApprovalStatus.self.date)}</div>` :
+                    `<button class="stamp-button" onclick="stampSelf()">担当者印を押す</button>`
+                }
+                            </div>
+                            
+                            <div class="stamp-box ${currentApprovalStatus.boss ? 'stamped' : ''}">
+                                <div class="stamp-label">承認印</div>
+                                ${currentApprovalStatus.boss ?
+                    `<div class="stamp">${currentApprovalStatus.boss.name}</div>
+                                     <div class="stamp-date">${formatDate(currentApprovalStatus.boss.date)}</div>` :
+                    currentApprovalStatus.self ?
+                        `<button class="stamp-button" onclick="stampBoss()">承認印を押す</button>` :
+                        `<div style="color: #999; font-size: 13px;">担当者印が必要です</div>`
+                }
+                            </div>
+                        </div>
+                    </div>
                 </div>
             `;
 
-            dataArea.innerHTML = html;
+            dataArea.innerHTML = calendarHtml;
         }
 
-        // 社員を承認
-        function approveEmployee(employeeId, employeeName) {
-            if (!confirm(`${employeeName} さんの勤怠を承認しますか？`)) {
+        // 担当者印を押す
+        function stampSelf() {
+            if (!confirm('担当者印を押しますか？\n（押印後は取り消せません）')) {
                 return;
             }
 
@@ -526,25 +566,70 @@
                     'Content-Type': 'text/plain;charset=utf-8',
                 },
                 body: JSON.stringify({
-                    action: 'approveEmployee',
-                    department: currentDepartment,
-                    employeeId: employeeId,
-                    yearMonth: currentYearMonth
+                    action: 'recordApproval',
+                    targetEmployeeId: currentEmployeeId,
+                    approverId: currentEmployeeId,
+                    yearMonth: currentYearMonth,
+                    type: 'self'
                 })
             })
                 .then(response => response.json())
                 .then(data => {
                     if (data.result === 'success') {
                         showMessage('success', data.message);
-                        // 一覧を再読み込み
-                        loadEmployeeList();
+                        loadMonthlyData(); // 再読み込み
                     } else {
-                        showMessage('error', '承認に失敗しました: ' + data.message);
+                        showMessage('error', '押印に失敗しました: ' + data.message);
                     }
                 })
                 .catch(error => {
                     showMessage('error', 'エラーが発生しました: ' + error.message);
                 });
+        }
+
+        // 承認印を押す
+        function stampBoss() {
+            const approverId = prompt('承認者の社員コードを入力してください:');
+            if (!approverId) return;
+
+            if (!confirm('承認印を押しますか？\n（押印後は取り消せません）')) {
+                return;
+            }
+
+            const gasUrl = localStorage.getItem('attendance_gas_url') || GAS_URL;
+
+            fetch(gasUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'text/plain;charset=utf-8',
+                },
+                body: JSON.stringify({
+                    action: 'recordApproval',
+                    targetEmployeeId: currentEmployeeId,
+                    approverId: approverId,
+                    yearMonth: currentYearMonth,
+                    type: 'boss'
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.result === 'success') {
+                        showMessage('success', data.message);
+                        loadMonthlyData(); // 再読み込み
+                    } else {
+                        showMessage('error', '押印に失敗しました: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    showMessage('error', 'エラーが発生しました: ' + error.message);
+                });
+        }
+
+        // 日付フォーマット
+        function formatDate(dateValue) {
+            if (!dateValue) return '';
+            const date = new Date(dateValue);
+            return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
         }
 
         // メッセージを表示
