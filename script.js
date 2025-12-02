@@ -76,21 +76,107 @@ document.addEventListener('DOMContentLoaded', () => {
                 const todayStr = `${today.getFullYear()}/${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}`;
                 const todayData = result.data[todayStr];
 
+                let isClockedIn = false;
+                let isClockedOut = false;
+
                 if (todayData) {
                     if (todayData.clockInTime) {
                         clockInDisplay.textContent = `✓ ${todayData.clockInTime}`;
+                        isClockedIn = true;
                     }
                     if (todayData.clockOutTime) {
                         clockOutDisplay.textContent = `✓ ${todayData.clockOutTime}`;
+                        isClockedOut = true;
                     }
                 }
+
+                // 打刻忘れチェックと警告音
+                checkAttendanceAlert(isClockedIn, isClockedOut);
             }
         } catch (error) {
             console.error('本日の打刻時刻取得エラー:', error);
         }
     }
 
+    // 警告音を鳴らす関数 (Web Audio API)
+    function playAlertSound() {
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
 
+            const audioCtx = new AudioContext();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            oscillator.type = 'square'; // 矩形波（警告音っぽい音）
+
+            // ピッ・ピッ・ピッ というパターン
+            const now = audioCtx.currentTime;
+
+            oscillator.frequency.setValueAtTime(880, now); // 880Hz (ラ)
+            oscillator.frequency.setValueAtTime(880, now + 0.1);
+            oscillator.frequency.setValueAtTime(0, now + 0.1); // 無音
+
+            oscillator.frequency.setValueAtTime(880, now + 0.2);
+            oscillator.frequency.setValueAtTime(880, now + 0.3);
+            oscillator.frequency.setValueAtTime(0, now + 0.3);
+
+            oscillator.frequency.setValueAtTime(880, now + 0.4);
+            oscillator.frequency.setValueAtTime(880, now + 0.5);
+
+            gainNode.gain.setValueAtTime(0.1, now); // 音量 10%
+            gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            oscillator.start();
+            oscillator.stop(now + 0.6);
+        } catch (e) {
+            console.error('警告音再生エラー:', e);
+        }
+    }
+
+    // 打刻忘れチェック関数
+    function checkAttendanceAlert(isClockedIn, isClockedOut) {
+        const now = new Date();
+        const hour = now.getHours();
+
+        // 土日はスキップ
+        const day = now.getDay();
+        if (day === 0 || day === 6) return;
+
+        let shouldAlert = false;
+        let alertMessage = '';
+
+        // 条件1: 12時を過ぎて出勤していない場合
+        if (hour >= 12 && !isClockedIn) {
+            shouldAlert = true;
+            alertMessage = '出勤打刻がされていません！';
+        }
+        // 条件2: 18時を過ぎて出勤済みだが退勤していない場合
+        else if (hour >= 18 && isClockedIn && !isClockedOut) {
+            shouldAlert = true;
+            alertMessage = '退勤打刻がされていません！';
+        }
+
+        if (shouldAlert) {
+            // 画面にメッセージ表示
+            showMessage(alertMessage, 'error');
+
+            // 音を鳴らす (ユーザー操作が必要な場合があるため、try-catchで囲む)
+            // ※ブラウザのポリシーにより、ユーザーが一度でもページを操作していないと音は鳴りません
+            playAlertSound();
+        }
+    }
+
+    // 定期的に打刻状況を再チェック (5分ごと)
+    setInterval(() => {
+        const employeeId = employeeIdInput.value.trim();
+        if (employeeId) {
+            loadTodayAttendance();
+        }
+    }, 5 * 60 * 1000);
 
     // 打刻処理（楽観的UI更新）
     async function handleAttendance(type) {

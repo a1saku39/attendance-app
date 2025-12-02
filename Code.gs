@@ -1,41 +1,57 @@
 function doPost(e) {
   try {
-    // APIエンドポイントの振り分け
-    var jsonData = JSON.parse(e.postData.contents);
-    var action = jsonData.action;
-    
-    // 月次確認機能のAPI
-    if (action === 'getMonthlyData') {
-      return getMonthlyData(e);
-    } else if (action === 'recordApproval') {
-      return recordApproval(e);
-    } else if (action === 'getDepartments') {
-      return getDepartments();
-    } else if (action === 'getEmployeesByDepartmentAndMonth') {
-      return getEmployeesByDepartmentAndMonth(e);
-    } else if (action === 'approveEmployee') {
-      return approveEmployee(e);
-    } else if (action === 'getPersonalMonthlyData') {
-      return getPersonalMonthlyData(e);
-    }
-    
-    // 以下、通常の打刻処理
-
-    // デバッグ用ログシートの準備
+    // デバッグ用ログシートの準備（最優先で確保）
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var debugSheet = ss.getSheetByName('デバッグログ');
     if (!debugSheet) {
       debugSheet = ss.insertSheet('デバッグログ');
       debugSheet.appendRow(['時刻', 'ログ内容']);
     }
-    
-    // 受信データのログ
+
+    // バージョン確認用ログ (v2.0)
+    debugSheet.appendRow([new Date(), '=== doPost実行 (v2.0) ===']);
     debugSheet.appendRow([new Date(), '受信データ: ' + e.postData.contents]);
-    
-    // POSTデータをパース
+
+    // APIエンドポイントの振り分け
     var jsonData = JSON.parse(e.postData.contents);
+    var action = jsonData.action;
+    
+    // 月次確認機能のAPI（これらは打刻処理ではないので、ここで処理を完了させる）
+    if (action === 'getMonthlyData') {
+      debugSheet.appendRow([new Date(), 'API実行: getMonthlyData']);
+      return getMonthlyData(e);
+    } else if (action === 'recordApproval') {
+      debugSheet.appendRow([new Date(), 'API実行: recordApproval']);
+      return recordApproval(e);
+    } else if (action === 'getDepartments') {
+      debugSheet.appendRow([new Date(), 'API実行: getDepartments']);
+      return getDepartments();
+    } else if (action === 'getEmployeesByDepartmentAndMonth') {
+      debugSheet.appendRow([new Date(), 'API実行: getEmployeesByDepartmentAndMonth']);
+      return getEmployeesByDepartmentAndMonth(e);
+    } else if (action === 'approveEmployee') {
+      debugSheet.appendRow([new Date(), 'API実行: approveEmployee']);
+      return approveEmployee(e);
+    } else if (action === 'getPersonalMonthlyData') {
+      debugSheet.appendRow([new Date(), 'API実行: getPersonalMonthlyData']);
+      return getPersonalMonthlyData(e);
+    }
+    
+    // 以下、通常の打刻処理（action が 'in' または 'out' の場合のみ）
+    
+    // 打刻処理に必要なフィールドの存在チェック
+    if (!jsonData.employeeId || !jsonData.timestamp || (action !== 'in' && action !== 'out')) {
+      debugSheet.appendRow([new Date(), 'エラー: 無効なアクションまたはパラメータ不足 (' + action + ')']);
+      return ContentService.createTextOutput(JSON.stringify({
+        result: 'error',
+        message: '必要なパラメータが不足しているか、無効なアクションです'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    debugSheet.appendRow([new Date(), '打刻処理開始: ' + action]);
+    
+    // POSTデータから必要な情報を取得
     var employeeId = jsonData.employeeId;
-    var action = jsonData.action; // 'in' or 'out'
     var timestamp = new Date(jsonData.timestamp);
     var remarks = jsonData.remarks || ''; // 備考
     
@@ -934,11 +950,12 @@ function getPersonalMonthlyData(e) {
       
       if (formattedDate === targetYearMonth1 || formattedDate === targetYearMonth2) {
         // 日付をキーにしてデータを格納
+        // 時刻データは既に "HH:mm" 形式の文字列として保存されているため、そのまま使用
         personalData[dateKey] = {
           clockInType: logValues[i][3],
-          clockInTime: logValues[i][4] ? Utilities.formatDate(new Date(logValues[i][4]), "Asia/Tokyo", "HH:mm") : '',
+          clockInTime: logValues[i][4] || '',
           clockOutType: logValues[i][5],
-          clockOutTime: logValues[i][6] ? Utilities.formatDate(new Date(logValues[i][6]), "Asia/Tokyo", "HH:mm") : '',
+          clockOutTime: logValues[i][6] || '',
           workingHours: logValues[i][7],
           remarks: logValues[i][8]
         };
@@ -959,3 +976,148 @@ function getPersonalMonthlyData(e) {
 }
 
 
+
+// ===== リマインダー通知機能 =====
+
+// 打刻忘れチェックとメール送信を行う関数
+// トリガーで定期実行することを想定（例: 10:00 と 19:00）
+function checkAndSendReminders() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var masterSheet = ss.getSheetByName('社員マスタ');
+  
+  if (!masterSheet) {
+    console.log('社員マスタが見つかりません');
+    return;
+  }
+
+  // 現在時刻と日付情報の取得
+  var now = new Date();
+  var todayStr = Utilities.formatDate(now, "Asia/Tokyo", "yyyy/MM/dd");
+  var hour = now.getHours();
+  
+  // 午前(12時前)なら出勤チェック、午後なら退勤チェック
+  var isMorningCheck = (hour < 12);
+  var checkType = isMorningCheck ? '出勤' : '退勤';
+  
+  console.log('リマインダーチェック開始: ' + todayStr + ' (' + checkType + '確認)');
+
+  // 1. 土日チェック
+  var dayOfWeek = now.getDay();
+  if (dayOfWeek === 0 || dayOfWeek === 6) {
+    console.log('土日のためリマインダーをスキップします');
+    return;
+  }
+
+  // 2. 祝日チェック (Googleカレンダーの日本の祝日を使用)
+  try {
+    var calendarId = 'ja.japanese#holiday@group.v.calendar.google.com';
+    var calendar = CalendarApp.getCalendarById(calendarId);
+    var events = calendar.getEventsForDay(now);
+    if (events.length > 0) {
+      console.log('祝日のためリマインダーをスキップします: ' + events[0].getTitle());
+      return;
+    }
+  } catch (e) {
+    console.log('祝日チェックに失敗しました（処理は続行します）: ' + e.toString());
+  }
+
+  // 3. 社員マスタ取得
+  // A:コード, B:氏名, C:部署, ..., G:メールアドレス(7列目)
+  var lastRow = masterSheet.getLastRow();
+  if (lastRow <= 1) return;
+  
+  var employees = masterSheet.getRange(2, 1, lastRow - 1, 7).getValues();
+  
+  // 4. 各社員の打刻状況をチェック
+  employees.forEach(function(emp) {
+    var empId = emp[0];
+    var empName = emp[1];
+    var department = emp[2];
+    var email = emp[6]; // G列: メールアドレス
+    
+    // メールアドレスがない、または部署未設定の場合はスキップ
+    if (!email || !department || department === '未設定') return;
+    
+    var logSheetName = '打刻_' + department;
+    var logSheet = ss.getSheetByName(logSheetName);
+    var isClockedIn = false;
+    var isClockedOut = false;
+    
+    if (logSheet) {
+      // 今日のデータを検索（直近50行を確認）
+      var logLastRow = logSheet.getLastRow();
+      if (logLastRow > 1) {
+        var startRow = Math.max(2, logLastRow - 50);
+        var numRows = logLastRow - startRow + 1;
+        var logs = logSheet.getRange(startRow, 1, numRows, 7).getValues(); // G列(退勤時刻)まで
+        
+        for (var i = logs.length - 1; i >= 0; i--) {
+          var logDate = logs[i][0];
+          var logId = logs[i][1];
+          
+          var logDateStr = '';
+          if (logDate instanceof Date) {
+            logDateStr = Utilities.formatDate(logDate, "Asia/Tokyo", "yyyy/MM/dd");
+          } else {
+            logDateStr = String(logDate);
+          }
+          
+          // 日付とIDが一致するか
+          if (logDateStr === todayStr && String(logId) === String(empId)) {
+            if (logs[i][4]) isClockedIn = true; // E列: 出勤時刻
+            if (logs[i][6]) isClockedOut = true; // G列: 退勤時刻
+            break;
+          }
+        }
+      }
+    }
+    
+    // 5. 条件に応じてメール送信
+    if (isMorningCheck) {
+      // 出勤チェック: まだ出勤していない場合に通知
+      if (!isClockedIn) {
+        sendReminderEmail(email, empName, 'in');
+      }
+    } else {
+      // 退勤チェック: 出勤しているが、退勤していない場合に通知
+      if (isClockedIn && !isClockedOut) {
+        sendReminderEmail(email, empName, 'out');
+      }
+    }
+  });
+}
+
+// メール送信ヘルパー関数
+function sendReminderEmail(to, name, type) {
+  var subject = '';
+  var body = '';
+  
+  if (type === 'in') {
+    subject = '【勤怠連絡】出勤打刻の確認';
+    body = name + ' さん\n\n' +
+           'おはようございます。\n' +
+           '本日の出勤打刻が確認できていません。\n' +
+           '業務を開始されている場合は、打刻をお願いします。\n\n' +
+           '※休暇等の場合はご放念ください。\n' +
+           '※このメールはシステムより自動送信されています。';
+  } else {
+    subject = '【勤怠連絡】退勤打刻の確認';
+    body = name + ' さん\n\n' +
+           'お疲れ様です。\n' +
+           '本日の退勤打刻が確認できていません。\n' +
+           '業務を終了されている場合は、打刻をお願いします。\n\n' +
+           '※残業中の場合は、業務終了後に打刻をお願いします。\n' +
+           '※このメールはシステムより自動送信されています。';
+  }
+  
+  try {
+    MailApp.sendEmail({
+      to: to,
+      subject: subject,
+      body: body
+    });
+    console.log('メール送信成功: ' + name + ' (' + to + ')');
+  } catch (e) {
+    console.log('メール送信失敗: ' + name + ' - ' + e.toString());
+  }
+}
