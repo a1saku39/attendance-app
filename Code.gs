@@ -35,6 +35,9 @@ function doPost(e) {
     } else if (action === 'getPersonalMonthlyData') {
       debugSheet.appendRow([new Date(), 'API実行: getPersonalMonthlyData']);
       return getPersonalMonthlyData(e);
+    } else if (action === 'getApproverDashboard') {
+      debugSheet.appendRow([new Date(), 'API実行: getApproverDashboard']);
+      return getApproverDashboard(e);
     }
     
     // 以下、通常の打刻処理（action が 'in' または 'out' の場合のみ）
@@ -1124,5 +1127,145 @@ function sendReminderEmail(to, name, type) {
     console.log('メール送信成功: ' + name + ' (' + to + ')');
   } catch (e) {
     console.log('メール送信失敗: ' + name + ' - ' + e.toString());
+  }
+}
+
+// 承認者ダッシュボード用データ取得
+function getApproverDashboard(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var jsonData = JSON.parse(e.postData.contents);
+    var approverId = jsonData.approverId;
+    var yearMonth = jsonData.yearMonth; // YYYY-MM
+    
+    // 1. 承認者の情報を取得
+    var masterSheet = ss.getSheetByName('社員マスタ');
+    var approverInfo = getEmployeeInfo(masterSheet, approverId);
+    
+    if (!approverInfo) {
+      return ContentService.createTextOutput(JSON.stringify({
+        result: 'error',
+        message: '承認者の情報が見つかりません'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    var approverName = approverInfo.name;
+    
+    // 2. 部下（承認対象者）を検索
+    // マスタ構造: A:コード, B:氏名, C:部署, D:承認対象部署, E:第1承認者
+    var lastRow = masterSheet.getLastRow();
+    var subordinates = [];
+    
+    if (lastRow > 1) {
+      var values = masterSheet.getRange(2, 1, lastRow - 1, 5).getValues();
+      for (var i = 0; i < values.length; i++) {
+        // E列(index 4)が承認者名と一致するか
+        if (values[i][4] === approverName) {
+          subordinates.push({
+            id: values[i][0],
+            name: values[i][1],
+            department: values[i][2]
+          });
+        }
+      }
+    }
+    
+    if (subordinates.length === 0) {
+      return ContentService.createTextOutput(JSON.stringify({
+        result: 'success',
+        isApprover: false,
+        subordinates: []
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // 3. 各部下の勤怠状況をチェック
+    // 月の営業日数を計算（土日除く）
+    var parts = yearMonth.split('-');
+    var year = parseInt(parts[0]);
+    var month = parseInt(parts[1]);
+    var daysInMonth = new Date(year, month, 0).getDate();
+    var workDays = 0;
+    for (var d = 1; d <= daysInMonth; d++) {
+      var dayCheck = new Date(year, month - 1, d).getDay();
+      if (dayCheck !== 0 && dayCheck !== 6) workDays++;
+    }
+    
+    var approvalSheet = ss.getSheetByName('月次承認記録_個人');
+    var approvalData = [];
+    if (approvalSheet && approvalSheet.getLastRow() > 1) {
+      approvalData = approvalSheet.getRange(2, 1, approvalSheet.getLastRow() - 1, 6).getValues();
+    }
+    
+    // 各部下のデータ処理
+    for (var i = 0; i < subordinates.length; i++) {
+      var sub = subordinates[i];
+      var sheetName = '打刻_' + sub.department;
+      var logSheet = ss.getSheetByName(sheetName);
+      
+      var attendanceCount = 0;
+      
+      if (logSheet && logSheet.getLastRow() > 1) {
+        // 打刻データをスキャン（効率化のため全取得は避けるべきだが、簡易実装として）
+        var logs = logSheet.getRange(2, 1, logSheet.getLastRow() - 1, 2).getValues();
+        var countedDays = {};
+        
+        for (var j = 0; j < logs.length; j++) {
+           var logDate = logs[j][0];
+           var logId = String(logs[j][1]);
+           
+           if (String(logId) === String(sub.id)) {
+             var logYM = '';
+             if (logDate instanceof Date) {
+               logYM = Utilities.formatDate(logDate, "Asia/Tokyo", "yyyy-MM");
+             } else {
+               logYM = String(logDate).substring(0, 7);
+             }
+             
+             if (logYM === yearMonth) {
+               var dateKey = '';
+               if (logDate instanceof Date) {
+                  dateKey = Utilities.formatDate(logDate, "Asia/Tokyo", "yyyy/MM/dd");
+               } else {
+                  dateKey = String(logDate);
+               }
+               
+               if (!countedDays[dateKey]) {
+                 countedDays[dateKey] = true;
+                 attendanceCount++;
+               }
+             }
+           }
+        }
+      }
+      
+      // 承認状態の確認
+      var status = { self: false, boss: false };
+      for (var k = 0; k < approvalData.length; k++) {
+        // A:年月, B:社員ID, C:本人, E:承認者
+        if (approvalData[k][0] === yearMonth && String(approvalData[k][1]) === String(sub.id)) {
+          if (approvalData[k][2]) status.self = true;
+          if (approvalData[k][4]) status.boss = true;
+          break;
+        }
+      }
+      
+      sub.attendanceDays = attendanceCount;
+      sub.workDays = workDays;
+      sub.status = status;
+      // 承認可能条件: (平日日数 <= 打刻日数) AND (本人確認済み) AND (未承認)
+      sub.canApprove = (attendanceCount >= workDays) && status.self && !status.boss;
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'success',
+      isApprover: true,
+      subordinates: subordinates
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'error',
+      message: error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
   }
 }

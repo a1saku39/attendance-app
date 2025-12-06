@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>月次勤怠確認</title>
     <style>
         * {
@@ -32,12 +32,6 @@
             font-weight: 600;
             font-size: 14px;
             opacity: 0.9;
-            transition: opacity 0.3s;
-        }
-
-        .back-link:hover {
-            opacity: 1;
-            text-decoration: underline;
         }
 
         .header {
@@ -87,21 +81,12 @@
             font-size: 14px;
         }
 
-        input,
-        select {
+        input {
             width: 100%;
             padding: 12px 16px;
             border: 2px solid #e0e0e0;
             border-radius: 12px;
             font-size: 15px;
-            transition: all 0.3s ease;
-        }
-
-        input:focus,
-        select:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
         button {
@@ -117,11 +102,6 @@
         .btn-primary {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
         }
 
         .data-card {
@@ -142,7 +122,7 @@
         .calendar-header {
             text-align: center;
             font-weight: 600;
-            padding: 10px;
+            padding: 10px 5px;
             background: #f8f9ff;
             border-radius: 8px;
             font-size: 13px;
@@ -158,12 +138,7 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            transition: all 0.2s;
-        }
-
-        .calendar-day:hover {
-            border-color: #667eea;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+            min-height: 60px;
         }
 
         .calendar-day.has-data {
@@ -190,6 +165,7 @@
             border-top: 2px solid #e0e0e0;
             padding-top: 30px;
             margin-top: 30px;
+            clear: both;
         }
 
         .approval-title {
@@ -202,18 +178,17 @@
         .stamp-container {
             display: flex;
             gap: 40px;
-            align-items: center;
+            align-items: stretch;
             flex-wrap: wrap;
         }
 
         .stamp-box {
             flex: 1;
-            min-width: 200px;
+            min-width: 250px;
             border: 3px dashed #e0e0e0;
             border-radius: 16px;
             padding: 30px;
             text-align: center;
-            position: relative;
         }
 
         .stamp-box.stamped {
@@ -258,18 +233,6 @@
             font-size: 15px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .stamp-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(220, 53, 69, 0.4);
-        }
-
-        .stamp-button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            transform: none;
         }
 
         .message {
@@ -278,19 +241,6 @@
             margin-bottom: 20px;
             font-size: 14px;
             font-weight: 600;
-            animation: slideIn 0.3s ease;
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
         }
 
         .message.success {
@@ -305,17 +255,10 @@
             border: 2px solid #f5c6cb;
         }
 
-        .message.info {
-            background: #d1ecf1;
-            color: #0c5460;
-            border: 2px solid #bee5eb;
-        }
-
         .loading {
             text-align: center;
             padding: 40px;
             color: #667eea;
-            font-size: 16px;
         }
 
         .spinner {
@@ -338,14 +281,75 @@
             }
         }
 
+        /* スマホ対応 */
         @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .header {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 22px;
+            }
+
+            .controls {
+                padding: 15px;
+            }
+
+            .control-group {
+                flex-direction: column;
+            }
+
+            .form-group {
+                width: 100%;
+            }
+
+            button {
+                width: 100%;
+            }
+
+            .data-card {
+                padding: 15px;
+            }
+
             .calendar-grid {
-                gap: 4px;
+                gap: 2px;
+                margin-bottom: 40px;
+            }
+
+            .calendar-header {
+                padding: 5px 2px;
+                font-size: 11px;
             }
 
             .calendar-day {
-                padding: 4px;
-                font-size: 10px;
+                padding: 3px;
+                font-size: 9px;
+                min-height: 60px;
+                /* 高さを少し確保 */
+                height: auto;
+            }
+
+            .day-number {
+                font-size: 11px;
+            }
+
+            .day-times {
+                font-size: 8px;
+            }
+
+            .approval-section {
+                margin-top: 40px;
+                padding-top: 20px;
+                border-top: 2px solid #e0e0e0;
+                clear: both;
+            }
+
+            .approval-title {
+                font-size: 18px;
             }
 
             .stamp-container {
@@ -355,6 +359,19 @@
 
             .stamp-box {
                 min-width: 100%;
+                width: 100%;
+                padding: 20px;
+            }
+
+            .stamp {
+                width: 80px;
+                height: 80px;
+                font-size: 16px;
+            }
+
+            .stamp-button {
+                width: 100%;
+                padding: 15px;
             }
         }
     </style>
@@ -385,30 +402,25 @@
         </div>
 
         <div id="dataArea"></div>
+        <div id="approverArea" style="display: none;"></div>
     </div>
 
     <script>
-        const GAS_URL = 'YOUR_GAS_WEB_APP_URL';
-
         let currentEmployeeId = '';
         let currentYearMonth = '';
-        let currentApprovalStatus = null;
+        let currentApprovalStatus = { self: null, boss: null };
 
-        // ページ読み込み時の初期化
         window.onload = function () {
-            // 今月をデフォルトに設定
             const today = new Date();
             const yearMonth = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
             document.getElementById('yearMonth').value = yearMonth;
 
-            // LocalStorageから社員コードを読み込み
             const savedEmployeeId = localStorage.getItem('attendance_employee_id');
             if (savedEmployeeId) {
                 document.getElementById('employeeId').value = savedEmployeeId;
             }
         };
 
-        // 月次データを読み込む
         function loadMonthlyData() {
             const employeeId = document.getElementById('employeeId').value.trim();
             const yearMonth = document.getElementById('yearMonth').value;
@@ -425,26 +437,25 @@
 
             currentEmployeeId = employeeId;
             currentYearMonth = yearMonth;
-
-            // LocalStorageに保存
             localStorage.setItem('attendance_employee_id', employeeId);
 
-            // ローディング表示
             document.getElementById('dataArea').innerHTML = '<div class="loading"><div class="spinner"></div>データを読み込んでいます...</div>';
+            document.getElementById('approverArea').style.display = 'none';
 
-            const gasUrl = localStorage.getItem('attendance_gas_url') || GAS_URL;
+            const gasUrl = localStorage.getItem('attendance_gas_url');
 
-            if (!gasUrl || gasUrl === 'YOUR_GAS_WEB_APP_URL') {
+            if (!gasUrl) {
                 showMessage('error', 'GAS WebアプリのURLが設定されていません');
                 document.getElementById('dataArea').innerHTML = '';
                 return;
             }
 
+            console.log('リクエスト送信:', { employeeId, yearMonth });
+
+            // 1. 個人の月次データを取得
             fetch(gasUrl, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'text/plain;charset=utf-8',
-                },
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify({
                     action: 'getPersonalMonthlyData',
                     employeeId: employeeId,
@@ -453,48 +464,167 @@
             })
                 .then(response => response.json())
                 .then(data => {
+                    console.log('取得したデータ:', data);
                     if (data.result === 'success') {
-                        currentApprovalStatus = data.approvalStatus;
+                        currentApprovalStatus = data.approvalStatus || { self: null, boss: null };
                         displayMonthlyData(data.data, yearMonth);
+
+                        // 2. 承認者かどうかチェックしてダッシュボードを表示
+                        loadApproverDashboard(gasUrl, employeeId, yearMonth);
                     } else {
                         showMessage('error', 'データの取得に失敗しました: ' + data.message);
                         document.getElementById('dataArea').innerHTML = '';
                     }
                 })
                 .catch(error => {
+                    console.error('エラー:', error);
                     showMessage('error', 'エラーが発生しました: ' + error.message);
                     document.getElementById('dataArea').innerHTML = '';
                 });
         }
 
-        // 月次データを表示
-        function displayMonthlyData(data, yearMonth) {
-            const dataArea = document.getElementById('dataArea');
+        function loadApproverDashboard(gasUrl, approverId, yearMonth) {
+            fetch(gasUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({
+                    action: 'getApproverDashboard',
+                    approverId: approverId,
+                    yearMonth: yearMonth
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    const approverArea = document.getElementById('approverArea');
+                    if (data.result === 'success' && data.isApprover) {
+                        renderApproverDashboard(data.subordinates, yearMonth);
+                        approverArea.style.display = 'block';
+                    } else {
+                        approverArea.style.display = 'none';
+                        if (data.result === 'error') {
+                            console.error('Approver Dashboard Error:', data.message);
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Approver Dashboard Fetch Error:', error);
+                });
+        }
 
-            // カレンダーを生成
+        function renderApproverDashboard(subordinates, yearMonth) {
+            const container = document.getElementById('approverArea');
+            let html = `
+                <div class="data-card" style="border: 2px solid #667eea; background: #f0f4ff;">
+                    <h2 style="margin-bottom: 20px; color: #667eea;">👑 【管理者用】承認待ちリスト (${yearMonth})</h2>
+                    <p style="margin-bottom: 15px; font-size: 13px; color: #666;">
+                        あなたの名前が社員マスタのE列（第1承認者）にある社員が表示されています。<br>
+                        承認条件：[勤怠データ完備] AND [本人確認済み]
+                    </p>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden;">
+                            <tr style="background: #667eea; color: white;">
+                                <th style="padding: 10px; text-align: left;">社員名</th>
+                                <th style="padding: 10px; text-align: center;">打刻状況</th>
+                                <th style="padding: 10px; text-align: center;">本人確認</th>
+                                <th style="padding: 10px; text-align: center;">状態</th>
+                                <th style="padding: 10px; text-align: center;">操作</th>
+                            </tr>`;
+
+            if (subordinates.length === 0) {
+                html += `<tr><td colspan="5" style="padding: 20px; text-align: center;">承認対象の部下はいません</td></tr>`;
+            } else {
+                subordinates.forEach(sub => {
+                    const progress = `${sub.attendanceDays}/${sub.workDays}`;
+                    const isComplete = sub.attendanceDays >= sub.workDays;
+                    const selfChecked = sub.status.self;
+                    const approved = sub.status.boss;
+
+                    let statusText = '';
+                    let actionButton = '';
+                    let rowStyle = '';
+
+                    if (approved) {
+                        statusText = '<span style="color: green; font-weight: bold;">承認済み</span>';
+                        actionButton = '-';
+                        rowStyle = 'background: #f8fff9;';
+                    } else if (sub.canApprove) {
+                        statusText = '<span style="color: #e67e22; font-weight: bold;">承認待ち</span>';
+                        actionButton = `<button onclick="approveSubordinate('${sub.id}', '${yearMonth}')" style="padding: 6px 12px; font-size: 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">承認する</button>`;
+                        rowStyle = 'background: #fff;';
+                    } else {
+                        statusText = '<span style="color: #999;">未完了</span>';
+                        actionButton = '<span style="font-size: 11px; color: #ccc;">条件未達</span>';
+                        rowStyle = 'background: #f9f9f9; color: #999;';
+                    }
+
+                    html += `
+                        <tr style="border-bottom: 1px solid #eee; ${rowStyle}">
+                            <td style="padding: 10px;">${sub.name} <span style="font-size: 10px; color: #999;">(${sub.department})</span></td>
+                            <td style="padding: 10px; text-align: center;">${progress}</td>
+                            <td style="padding: 10px; text-align: center;">${selfChecked ? '✅' : '-'}</td>
+                            <td style="padding: 10px; text-align: center;">${statusText}</td>
+                            <td style="padding: 10px; text-align: center;">${actionButton}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            html += `</table></div></div>`;
+            container.innerHTML = html;
+        }
+
+        function approveSubordinate(targetId, yearMonth) {
+            if (!confirm('この社員の月次勤怠を承認しますか？\n（承認印が記録されます）')) return;
+
+            const gasUrl = localStorage.getItem('attendance_gas_url');
+            const approverId = currentEmployeeId; // 現在ログイン中のID
+
+            fetch(gasUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({
+                    action: 'recordApproval',
+                    targetEmployeeId: targetId,
+                    approverId: approverId,
+                    yearMonth: yearMonth,
+                    type: 'boss'
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.result === 'success') {
+                        showMessage('success', data.message);
+                        // 画面をリロードして反映
+                        loadMonthlyData();
+                    } else {
+                        showMessage('error', data.message);
+                    }
+                })
+                .catch(error => {
+                    showMessage('error', '通信エラー: ' + error.message);
+                });
+        }
+
+        function displayMonthlyData(data, yearMonth) {
             const [year, month] = yearMonth.split('-').map(Number);
             const daysInMonth = new Date(year, month, 0).getDate();
             const firstDay = new Date(year, month - 1, 1).getDay();
 
-            let calendarHtml = `
-                <div class="data-card">
-                    <h2 style="margin-bottom: 20px; color: #333;">${year}年${month}月の勤怠</h2>
-                    <div class="calendar-grid">
-                        <div class="calendar-header">日</div>
-                        <div class="calendar-header">月</div>
-                        <div class="calendar-header">火</div>
-                        <div class="calendar-header">水</div>
-                        <div class="calendar-header">木</div>
-                        <div class="calendar-header">金</div>
-                        <div class="calendar-header">土</div>
-            `;
+            let html = `<div class="data-card">
+                <h2 style="margin-bottom: 20px; color: #333;">${year}年${month}月の勤怠</h2>
+                <div class="calendar-grid">
+                    <div class="calendar-header">日</div>
+                    <div class="calendar-header">月</div>
+                    <div class="calendar-header">火</div>
+                    <div class="calendar-header">水</div>
+                    <div class="calendar-header">木</div>
+                    <div class="calendar-header">金</div>
+                    <div class="calendar-header">土</div>`;
 
-            // 空白セル
             for (let i = 0; i < firstDay; i++) {
-                calendarHtml += '<div></div>';
+                html += '<div></div>';
             }
 
-            // 日付セル
             for (let day = 1; day <= daysInMonth; day++) {
                 const dateStr = `${year}/${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}`;
                 const dayData = data[dateStr];
@@ -511,60 +641,52 @@
                     if (dayData.clockOutTime) timesHtml += `退: ${dayData.clockOutTime}`;
                 }
 
-                calendarHtml += `
-                    <div class="${dayClass}">
-                        <div class="day-number">${day}</div>
-                        <div class="day-times">${timesHtml}</div>
-                    </div>
-                `;
+                html += `<div class="${dayClass}">
+                    <div class="day-number">${day}</div>
+                    <div class="day-times">${timesHtml}</div>
+                </div>`;
             }
 
-            calendarHtml += `
-                    </div>
-                    
-                    <div class="approval-section">
-                        <div class="approval-title">📝 承認欄</div>
-                        <div class="stamp-container">
-                            <div class="stamp-box ${currentApprovalStatus.self ? 'stamped' : ''}">
-                                <div class="stamp-label">担当者印</div>
-                                ${currentApprovalStatus.self ?
+            html += `</div>
+                <div class="approval-section">
+                    <div class="approval-title">📝 承認欄</div>
+                    <div class="stamp-container">
+                        <div class="stamp-box ${currentApprovalStatus.self ? 'stamped' : ''}">
+                            <div class="stamp-label">担当者印</div>
+                            ${currentApprovalStatus.self ?
                     `<div class="stamp">${currentApprovalStatus.self.name}</div>
-                                     <div class="stamp-date">${formatDate(currentApprovalStatus.self.date)}</div>` :
+                                 <div class="stamp-date">${formatDate(currentApprovalStatus.self.date)}</div>` :
                     `<button class="stamp-button" onclick="stampSelf()">担当者印を押す</button>`
                 }
-                            </div>
-                            
-                            <div class="stamp-box ${currentApprovalStatus.boss ? 'stamped' : ''}">
-                                <div class="stamp-label">承認印</div>
-                                ${currentApprovalStatus.boss ?
+                        </div>
+                        <div class="stamp-box ${currentApprovalStatus.boss ? 'stamped' : ''}">
+                            <div class="stamp-label">承認印</div>
+                            ${currentApprovalStatus.boss ?
                     `<div class="stamp">${currentApprovalStatus.boss.name}</div>
-                                     <div class="stamp-date">${formatDate(currentApprovalStatus.boss.date)}</div>` :
+                                 <div class="stamp-date">${formatDate(currentApprovalStatus.boss.date)}</div>` :
                     currentApprovalStatus.self ?
                         `<button class="stamp-button" onclick="stampBoss()">承認印を押す</button>` :
                         `<div style="color: #999; font-size: 13px;">担当者印が必要です</div>`
                 }
-                            </div>
                         </div>
                     </div>
                 </div>
-            `;
+            </div>`;
 
-            dataArea.innerHTML = calendarHtml;
+            document.getElementById('dataArea').innerHTML = html;
         }
 
-        // 担当者印を押す
         function stampSelf() {
-            if (!confirm('担当者印を押しますか？\n（押印後は取り消せません）')) {
+            console.log('担当者印を押す:', currentEmployeeId);
+            if (!confirm('担当者印を押しますか?\n（押印後は取り消せません）')) {
                 return;
             }
 
-            const gasUrl = localStorage.getItem('attendance_gas_url') || GAS_URL;
+            const gasUrl = localStorage.getItem('attendance_gas_url');
 
             fetch(gasUrl, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'text/plain;charset=utf-8',
-                },
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify({
                     action: 'recordApproval',
                     targetEmployeeId: currentEmployeeId,
@@ -575,34 +697,33 @@
             })
                 .then(response => response.json())
                 .then(data => {
+                    console.log('押印結果:', data);
                     if (data.result === 'success') {
                         showMessage('success', data.message);
-                        loadMonthlyData(); // 再読み込み
+                        loadMonthlyData();
                     } else {
                         showMessage('error', '押印に失敗しました: ' + data.message);
                     }
                 })
                 .catch(error => {
+                    console.error('押印エラー:', error);
                     showMessage('error', 'エラーが発生しました: ' + error.message);
                 });
         }
 
-        // 承認印を押す
         function stampBoss() {
             const approverId = prompt('承認者の社員コードを入力してください:');
             if (!approverId) return;
 
-            if (!confirm('承認印を押しますか？\n（押印後は取り消せません）')) {
+            if (!confirm('承認印を押しますか?\n（押印後は取り消せません）')) {
                 return;
             }
 
-            const gasUrl = localStorage.getItem('attendance_gas_url') || GAS_URL;
+            const gasUrl = localStorage.getItem('attendance_gas_url');
 
             fetch(gasUrl, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'text/plain;charset=utf-8',
-                },
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify({
                     action: 'recordApproval',
                     targetEmployeeId: currentEmployeeId,
@@ -613,26 +734,26 @@
             })
                 .then(response => response.json())
                 .then(data => {
+                    console.log('承認結果:', data);
                     if (data.result === 'success') {
                         showMessage('success', data.message);
-                        loadMonthlyData(); // 再読み込み
+                        loadMonthlyData();
                     } else {
                         showMessage('error', '押印に失敗しました: ' + data.message);
                     }
                 })
                 .catch(error => {
+                    console.error('承認エラー:', error);
                     showMessage('error', 'エラーが発生しました: ' + error.message);
                 });
         }
 
-        // 日付フォーマット
         function formatDate(dateValue) {
             if (!dateValue) return '';
             const date = new Date(dateValue);
             return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
         }
 
-        // メッセージを表示
         function showMessage(type, message) {
             const messageArea = document.getElementById('messageArea');
             const messageDiv = document.createElement('div');
@@ -641,12 +762,9 @@
             messageArea.innerHTML = '';
             messageArea.appendChild(messageDiv);
 
-            // 5秒後に自動で消す
             setTimeout(() => {
                 messageDiv.style.opacity = '0';
-                setTimeout(() => {
-                    messageDiv.remove();
-                }, 300);
+                setTimeout(() => messageDiv.remove(), 300);
             }, 5000);
         }
     </script>
