@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理者ダッシュボード - 勤怠管理</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-dark: #4338ca;
+            --bg: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-main: #1f2937;
+            --text-sub: #6b7280;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .back-btn {
+            text-decoration: none;
+            color: var(--text-sub);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .dashboard-controls {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            display: flex;
+            gap: 20px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        input {
+            padding: 10px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            color: white;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+        }
+
+        .status-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .modal-card {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            color: var(--text-sub);
+            font-size: 0.9rem;
+        }
+
+        .employee-list {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: #f9fafb;
+            padding: 15px;
+            text-align: left;
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 0.95rem;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .status-ok {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .action-btn {
+            background: var(--success);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            border: none;
+            cursor: pointer;
+        }
+
+        .action-btn:disabled {
+            background: #e5e7eb;
+            cursor: not-allowed;
+            color: #9ca3af;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: var(--text-sub);
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .dashboard-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            th,
+            td {
+                padding: 10px;
+                font-size: 0.85rem;
+            }
+
+            /* テーブルをカード形式にするなどのスマホ最適化も可能だが今回は簡易対応 */
+            .hide-mobile {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <a href="index.html" class="back-btn">← メニューへ戻る</a>
+                <h1>👑 管理者ダッシュボード</h1>
+            </div>
+            <div id="approverNameDisplay" style="font-weight: bold; color: var(--primary);">
+                <!-- ここに承認者名を表示 -->
+            </div>
+        </div>
+
+        <div class="dashboard-controls">
+            <div class="control-group">
+                <label for="approverId">管理者社員コード</label>
+                <input type="text" id="approverId" placeholder="あなたの社員コード">
+            </div>
+            <div class="control-group">
+                <label for="yearMonth">対象年月</label>
+                <input type="month" id="yearMonth">
+            </div>
+            <button class="btn btn-primary" onclick="loadDashboard()">データを表示</button>
+        </div>
+
+        <div id="statsArea" class="status-cards" style="display: none;">
+            <div class="modal-card">
+                <div class="stat-number" id="statsTotal">0</div>
+                <div class="stat-label">対象人数</div>
+            </div>
+            <div class="modal-card">
+                <div class="stat-number" id="statsPending" style="color: var(--warning);">0</div>
+                <div class="stat-label">承認待ち</div>
+            </div>
+            <div class="modal-card">
+                <div class="stat-number" id="statsApproved" style="color: var(--success);">0</div>
+                <div class="stat-label">承認済み</div>
+            </div>
+        </div>
+
+        <div id="dataArea">
+            <div style="text-align: center; color: var(--text-sub); margin-top: 50px;">
+                管理者情報を入力して「データを表示」を押してください
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.onload = function () {
+            const today = new Date();
+            const yearMonth = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
+            document.getElementById('yearMonth').value = yearMonth;
+
+            // ローカルストレージから前回入力したコードを復元
+            const savedId = localStorage.getItem('attendance_approver_id') || localStorage.getItem('attendance_employee_id');
+            if (savedId) {
+                document.getElementById('approverId').value = savedId;
+            }
+        };
+
+        function loadDashboard() {
+            const approverId = document.getElementById('approverId').value.trim();
+            const yearMonth = document.getElementById('yearMonth').value;
+
+            if (!approverId) {
+                alert('管理者社員コードを入力してください');
+                return;
+            }
+
+            localStorage.setItem('attendance_approver_id', approverId);
+            const gasUrl = localStorage.getItem('attendance_gas_url');
+
+            if (!gasUrl) {
+                alert('GAS URLが設定されていません。勤怠アプリの設定画面を確認してください。');
+                return;
+            }
+
+            document.getElementById('dataArea').innerHTML = '<div class="loading">検索中...</div>';
+            document.getElementById('statsArea').style.display = 'none';
+
+            fetch(gasUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({
+                    action: 'getApproverDashboard',
+                    approverId: approverId,
+                    yearMonth: yearMonth
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.result === 'success') {
+                        if (data.isApprover) {
+                            displayDashboard(data.subordinates, yearMonth);
+                        } else {
+                            document.getElementById('dataArea').innerHTML = `
+                            <div style="text-align: center; padding: 40px; background: white; border-radius: 12px;">
+                                <h3 style="color: var(--danger);">アクセス権限がありません</h3>
+                                <p style="margin-top: 10px; color: var(--text-sub);">
+                                    あなたの社員コードは、社員マスタの「第1承認者（E列）」に登録されていません。<br>
+                                    または、承認対象となる部下が見つかりませんでした。
+                                </p>
+                            </div>
+                        `;
+                        }
+                    } else {
+                        alert('エラー: ' + data.message);
+                        document.getElementById('dataArea').innerHTML = '';
+                    }
+                })
+                .catch(error => {
+                    console.error(error);
+                    document.getElementById('dataArea').innerHTML = '<div style="color:red; text-align:center">通信エラーが発生しました</div>';
+                });
+        }
+
+        function displayDashboard(subordinates, yearMonth) {
+            const container = document.getElementById('dataArea');
+            const statsArea = document.getElementById('statsArea');
+
+            // 統計データの計算
+            const total = subordinates.length;
+            const approved = subordinates.filter(s => s.status.boss).length;
+            const pending = subordinates.filter(s => s.canApprove).length;
+
+            document.getElementById('statsTotal').textContent = total;
+            document.getElementById('statsPending').textContent = pending;
+            document.getElementById('statsApproved').textContent = approved;
+            statsArea.style.display = 'grid';
+
+            let html = `
+                <div class="employee-list">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>社員名</th>
+                                <th>勤怠状況</th>
+                                <th class="hide-mobile">本人確認</th>
+                                <th>ステータス</th>
+                                <th style="text-align: center;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+            subordinates.forEach(sub => {
+                const progressText = `${sub.attendanceDays}/${sub.workDays}日`;
+                const isComplete = sub.attendanceDays >= sub.workDays;
+
+                let statusBadge = '';
+                let actionBtn = '';
+
+                if (sub.status.boss) {
+                    statusBadge = '<span class="status-badge status-ok">承認済み</span>';
+                    actionBtn = '<button class="action-btn" disabled>完了</button>';
+                } else if (sub.canApprove) {
+                    statusBadge = '<span class="status-badge status-warning">承認待ち</span>';
+                    actionBtn = `<button class="action-btn" onclick="approveEmployee('${sub.id}', '${yearMonth}')">承認する</button>`;
+                } else {
+                    statusBadge = '<span class="status-badge status-error">未完了</span>';
+                    actionBtn = `<button class="action-btn" disabled title="勤怠データ不足または本人未確認">不可</button>`;
+                }
+
+                // 本人確認アイコン
+                const selfCheckIcon = sub.status.self ? '✅' : '<span style="color:#ccc">未</span>';
+
+                html += `
+                    <tr>
+                        <td>
+                            <div style="font-weight: bold;">${sub.name}</div>
+                            <div style="font-size: 0.8rem; color: #6b7280;">${sub.department}</div>
+                        </td>
+                        <td>
+                            ${progressText}
+                            ${!isComplete ? '<span style="color:red; font-size:10px">不足</span>' : ''}
+                        </td>
+                        <td class="hide-mobile" style="text-align:center;">${selfCheckIcon}</td>
+                        <td>${statusBadge}</td>
+                        <td style="text-align: center;">${actionBtn}</td>
+                    </tr>
+                `;
+            });
+
+            html += `</tbody></table></div>`;
+            container.innerHTML = html;
+        }
+
+        function approveEmployee(targetId, yearMonth) {
+            if (!confirm('承認印を押しますか？')) return;
+
+            const approverId = document.getElementById('approverId').value;
+            const gasUrl = localStorage.getItem('attendance_gas_url');
+
+            fetch(gasUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({
+                    action: 'recordApproval',
+                    targetEmployeeId: targetId,
+                    approverId: approverId,
+                    yearMonth: yearMonth,
+                    type: 'boss'
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.result === 'success') {
+                        alert('承認完了しました');
+                        loadDashboard(); // 再読み込み
+                    } else {
+                        alert('エラー: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    alert('通信エラー: ' + error.message);
+                });
+        }
+    </script>
+</body>
+
+</html>

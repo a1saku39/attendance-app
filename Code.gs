@@ -306,6 +306,10 @@ function doGet(e) {
     return HtmlService.createHtmlOutputFromFile('MonthlyReview')
       .setTitle('月次勤怠確認・承認')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  } else if (page === 'manager-dashboard') {
+    return HtmlService.createHtmlOutputFromFile('ManagerDashboard')
+      .setTitle('管理者ダッシュボード')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
   
   // デフォルトは打刻画面
