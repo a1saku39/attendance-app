@@ -270,3 +270,30 @@ document.addEventListener('DOMContentLoaded', () => {
     clockInBtn.addEventListener('click', () => handleAttendance('in'));
     clockOutBtn.addEventListener('click', () => handleAttendance('out'));
 });
+
+// ハンバーガーメニュー制御
+document.addEventListener('DOMContentLoaded', function () {
+    const menuBtn = document.getElementById('menuBtn');
+    const closeMenuBtn = document.getElementById('closeMenuBtn');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('overlay');
+
+    function toggleMenu() {
+        if (sidebar && overlay) {
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+        }
+    }
+
+    if (menuBtn) {
+        menuBtn.addEventListener('click', toggleMenu);
+    }
+
+    if (closeMenuBtn) {
+        closeMenuBtn.addEventListener('click', toggleMenu);
+    }
+
+    if (overlay) {
+        overlay.addEventListener('click', toggleMenu);
+    }
+});
