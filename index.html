@@ -12,26 +12,36 @@
 <body>
     <div class="container">
         <header>
-            <h1>勤怠管理</h1>
-            <div style="margin-bottom: 15px; display: flex; flex-direction: column; gap: 10px;">
-                <a href="MonthlyReview.html" class="nav-link-btn">
-                    <span style="font-size: 1.2em;">📋</span> 月次確認・承認画面へ
-                </a>
-                <a href="ManagerDashboard.html" class="nav-link-btn"
-                    style="background: linear-gradient(135deg, #f59e0b, #d97706);">
-                    <span style="font-size: 1.2em;">👑</span> 管理者ダッシュボードへ
-                </a>
-                <a href="Calendar.html" class="nav-link-btn"
-                    style="background: linear-gradient(135deg, #10b981, #059669);">
-                    <span style="font-size: 1.2em;">📅</span> カレンダー確認へ
-                </a>
-                <a href="https://chatapp-v1-1-0wbf.onrender.com/" class="nav-link-btn"
-                    style="background: linear-gradient(135deg, #6366f1, #4f46e5);">
-                    <span style="font-size: 1.2em;">💬</span> 社内チャットへ
-                </a>
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                <button id="menuBtn" class="menu-button">☰</button>
+                <h1 style="margin: 0; font-size: 1.5rem;">勤怠管理</h1>
+                <div style="width: 30px;"></div>
             </div>
             <p id="current-time">--:--</p>
         </header>
+
+        <!-- Sidebar Menu -->
+        <div id="overlay" class="overlay"></div>
+        <nav id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <h2>メニュー</h2>
+                <button id="closeMenuBtn" class="close-menu-btn">×</button>
+            </div>
+            <div class="menu-links">
+                <a href="MonthlyReview.html" class="menu-link">
+                    <span class="icon">📋</span> 月次確認・承認
+                </a>
+                <a href="ManagerDashboard.html" class="menu-link">
+                    <span class="icon">👑</span> 管理者ダッシュボード
+                </a>
+                <a href="Calendar.html" class="menu-link">
+                    <span class="icon">📅</span> カレンダー確認
+                </a>
+                <a href="https://chatapp-v1-1-0wbf.onrender.com/" class="menu-link chat-link">
+                    <span class="icon">💬</span> 社内チャットへ
+                </a>
+            </div>
+        </nav>
 
         <main>
             <div class="user-input-group">
