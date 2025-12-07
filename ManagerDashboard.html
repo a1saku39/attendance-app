@@ -404,6 +404,9 @@
                     actionBtn = `<button class="action-btn" disabled title="勤怠データ不足または本人未確認">不可</button>`;
                 }
 
+                // カレンダー詳細ボタン
+                const calendarBtn = `<button class="action-btn" style="background:#6366f1; margin-right:5px;" onclick="viewMemberCalendar('${sub.id}', '${yearMonth}')">📅 詳細</button>`;
+
                 // 本人確認アイコン
                 const selfCheckIcon = sub.status.self ? '✅' : '<span style="color:#ccc">未</span>';
 
@@ -419,13 +422,19 @@
                         </td>
                         <td class="hide-mobile" style="text-align:center;">${selfCheckIcon}</td>
                         <td>${statusBadge}</td>
-                        <td style="text-align: center;">${actionBtn}</td>
+                        <td style="text-align: center;">${calendarBtn}${actionBtn}</td>
                     </tr>
                 `;
             });
 
             html += `</tbody></table></div>`;
             container.innerHTML = html;
+        }
+
+        function viewMemberCalendar(employeeId, yearMonth) {
+            // クエリパラメータを付けて月次確認画面へ遷移
+            // from=manager を付けることで、遷移先で「戻るボタン」を表示させる
+            window.location.href = `MonthlyReview.html?employeeId=${employeeId}&yearMonth=${yearMonth}&from=manager`;
         }
 
         function approveEmployee(targetId, yearMonth) {

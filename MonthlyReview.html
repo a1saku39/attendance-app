@@ -379,6 +379,12 @@
 
 <body>
     <div class="container">
+        <!-- 管理者メニュー用戻るボタン（デフォルト非表示） -->
+        <a href="ManagerDashboard.html" id="backToManagerBtn" class="back-link"
+            style="display: none; background: linear-gradient(135deg, #f59e0b, #d97706); padding: 8px 15px; border-radius: 8px; margin-bottom: 20px;">
+            👑 管理者ダッシュボードに戻る
+        </a>
+
         <a href="index.html" class="back-link">← 勤怠入力画面へ戻る</a>
         <div class="header">
             <h1>📋 月次勤怠確認</h1>
@@ -411,13 +417,31 @@
         let currentApprovalStatus = { self: null, boss: null };
 
         window.onload = function () {
-            const today = new Date();
-            const yearMonth = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
-            document.getElementById('yearMonth').value = yearMonth;
+            // URLパラメータの取得
+            const params = new URLSearchParams(window.location.search);
+            const pEmployeeId = params.get('employeeId');
+            const pYearMonth = params.get('yearMonth');
+            const pFrom = params.get('from');
 
+            // 今月の設定
+            const today = new Date();
+            const defaultYearMonth = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
+            document.getElementById('yearMonth').value = pYearMonth || defaultYearMonth;
+
+            // 社員IDの設定（URLパラメータ優先、なければローカルストレージ）
             const savedEmployeeId = localStorage.getItem('attendance_employee_id');
-            if (savedEmployeeId) {
-                document.getElementById('employeeId').value = savedEmployeeId;
+            document.getElementById('employeeId').value = pEmployeeId || savedEmployeeId || '';
+
+            // 管理者からの遷移の場合
+            if (pFrom === 'manager') {
+                const backBtn = document.getElementById('backToManagerBtn');
+                if (backBtn) backBtn.style.display = 'inline-block';
+            }
+
+            // パラメータが揃っていれば自動ロード
+            if (pEmployeeId && pYearMonth) {
+                // 少し待ってからロード（初期化待ち）
+                setTimeout(loadMonthlyData, 100);
             }
         };
 
