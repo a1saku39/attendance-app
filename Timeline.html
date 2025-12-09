@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>タイムライン - 勤怠管理アプリ</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container timeline-page">
+        <header>
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                <button id="menuBtn" class="menu-button">☰</button>
+                <h1 style="margin: 0; font-size: 1.5rem;">タイムライン</h1>
+                <div style="width: 30px;"></div>
+            </div>
+        </header>
+
+        <!-- Sidebar Menu -->
+        <div id="overlay" class="overlay"></div>
+        <nav id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <h2>メニュー</h2>
+                <button id="closeMenuBtn" class="close-menu-btn">×</button>
+            </div>
+            <div class="menu-links">
+                <a href="index.html" class="menu-link">
+                    <span class="icon">🏠</span> ホーム
+                </a>
+                <a href="MonthlyReview.html" class="menu-link">
+                    <span class="icon">📋</span> 月次確認・承認
+                </a>
+                <a href="ManagerDashboard.html" class="menu-link">
+                    <span class="icon">👑</span> 管理者ダッシュボード
+                </a>
+                <a href="Calendar.html" class="menu-link">
+                    <span class="icon">📅</span> カレンダー確認
+                </a>
+                <a href="Timeline.html" class="menu-link active">
+                    <span class="icon">⏱️</span> タイムライン
+                </a>
+                <a href="https://chatapp-v1-1-0wbf.onrender.com/" class="menu-link chat-link">
+                    <span class="icon">💬</span> 社内チャットへ
+                </a>
+            </div>
+        </nav>
+
+        <main>
+            <div class="timeline-controls">
+                <input type="month" id="month-selector">
+            </div>
+
+            <div id="timeline-container" class="timeline-container">
+                <!-- Timeline items will be injected here -->
+                <div class="loading">読み込み中...</div>
+            </div>
+        </main>
+    </div>
+    <div id="status-message" class="status-message"></div>
+    <script src="timeline.js"></script>
+</body>
+
+</html>
