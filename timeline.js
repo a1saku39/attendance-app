@@ -46,6 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch(gasUrl, {
                 method: 'POST',
+                redirect: 'follow',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify({
                     action: 'getPersonalMonthlyData',
@@ -54,18 +55,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 })
             });
 
-            const result = await response.json();
+            const text = await response.text();
+            let result;
+            try {
+                result = JSON.parse(text);
+            } catch (e) {
+                console.error('JSON Parse Error:', e);
+                console.error('Raw Response:', text);
+                throw new Error('サーバーからの応答が不正です (JSONではありません): ' + text.substring(0, 100));
+            }
 
             if (result.result === 'success') {
                 renderTimeline(result.data, yearMonth);
             } else {
-                showMessage('データの取得に失敗しました: ' + result.message, 'error');
-                timelineContainer.innerHTML = '<div style="text-align: center; color: red;">データの取得に失敗しました</div>';
+                const errorMsg = result.message || '不明なエラー';
+                showMessage('データの取得に失敗しました: ' + errorMsg, 'error');
+                timelineContainer.innerHTML = `<div style="text-align: center; color: red;">データの取得に失敗しました<br>${errorMsg}</div>`;
             }
         } catch (error) {
             console.error('Error:', error);
-            showMessage('通信エラーが発生しました', 'error');
-            timelineContainer.innerHTML = '<div style="text-align: center; color: red;">通信エラーが発生しました</div>';
+            const errorMsg = error.message || error.toString();
+            showMessage('エラーが発生しました: ' + errorMsg, 'error');
+            timelineContainer.innerHTML = `<div style="text-align: center; color: red; padding: 20px; word-break: break-all;">
+                <h3>エラーが発生しました</h3>
+                <p>以下のエラー内容を確認してください:</p>
+                <div style="background: #fee2e2; padding: 10px; border-radius: 4px; margin-top: 10px;">
+                    ${errorMsg}
+                </div>
+            </div>`;
         }
     }
 
@@ -86,7 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const date = new Date(dateStr);
             const dayOfWeek = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];
-            const formattedDate = `${date.getMonth() + 1}/${date.getDate()}`;
+            const formattedDate = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
 
             const item = document.createElement('div');
             item.className = 'timeline-item';
@@ -97,8 +114,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (dayData.clockInTime) {
                 contentHtml += `
                     <div class="timeline-row">
-                        <span class="timeline-label label-in">出勤</span>
-                        <span class="timeline-time">${dayData.clockInTime}</span>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span class="timeline-label label-in">出勤</span>
+                            <span class="timeline-time">${dayData.clockInTime}</span>
+                        </div>
                     </div>
                 `;
             }
@@ -107,8 +126,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (dayData.clockOutTime) {
                 contentHtml += `
                     <div class="timeline-row">
-                        <span class="timeline-label label-out">退勤</span>
-                        <span class="timeline-time">${dayData.clockOutTime}</span>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span class="timeline-label label-out">退勤</span>
+                            <span class="timeline-time">${dayData.clockOutTime}</span>
+                        </div>
                     </div>
                 `;
             }
@@ -127,19 +148,69 @@ document.addEventListener('DOMContentLoaded', () => {
                 contentHtml += `<div class="timeline-remarks">${dayData.remarks}</div>`;
             }
 
+            // GPS Badge
+            const hasGps = dayData.locationLog && dayData.locationLog.length > 0;
+            const gpsBadge = hasGps ? '<span style="background:#e0f2fe; color:#0284c7; font-size:0.75rem; padding:2px 6px; border-radius:4px; margin-left:8px; vertical-align:middle; font-weight:600;">GPS</span>' : '';
+
             item.innerHTML = `
                 <div class="timeline-marker"></div>
                 <div class="timeline-date">
                     ${formattedDate} 
                     <span class="timeline-day-week">(${dayOfWeek})</span>
+                    ${gpsBadge}
                 </div>
                 <div class="timeline-content">
                     ${contentHtml}
+                    <div id="map-${dateStr.replace(/\//g, '-')}" class="map-container" style="display:none; height: 300px; margin-top: 15px; border-radius: 8px;"></div>
                 </div>
             `;
 
             timelineContainer.appendChild(item);
+
+            // Render Map if location info exists
+            if (dayData.locationLog && dayData.locationLog.length > 0) {
+                const mapId = `map-${dateStr.replace(/\//g, '-')}`;
+                const mapEl = document.getElementById(mapId);
+                mapEl.style.display = 'block';
+
+                setTimeout(() => {
+                    initMap(mapId, dayData.locationLog);
+                }, 100);
+            }
         });
+    }
+
+    function initMap(elementId, locations) {
+        if (!locations || locations.length === 0) return;
+
+        // Create Leaflet Map
+        // Default to first point
+        const first = locations[0];
+        const map = L.map(elementId).setView([first.lat, first.lng], 13);
+
+        // Use OpenStreetMap tiles (Free, no key required)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        // Add markers and path
+        const latlngs = [];
+        locations.forEach(loc => {
+            if (loc.lat && loc.lng) {
+                const marker = L.marker([loc.lat, loc.lng]).addTo(map);
+                const time = loc.time || '';
+                const action = loc.action === 'in' ? '出勤' : (loc.action === 'out' ? '退勤' : '記録');
+                marker.bindPopup(`<b>${action}</b><br>${time}`);
+                latlngs.push([loc.lat, loc.lng]);
+            }
+        });
+
+        // If multiple points, fit bounds and draw line
+        if (latlngs.length > 1) {
+            const polyline = L.polyline(latlngs, { color: 'blue' }).addTo(map);
+            map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+        }
     }
 
     function showMessage(msg, type) {

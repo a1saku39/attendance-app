@@ -40,10 +40,11 @@ function doPost(e) {
       return getApproverDashboard(e);
     }
     
-    // 以下、通常の打刻処理（action が 'in' または 'out' の場合のみ）
+    // 以下、通常の打刻処理（action が 'in'、'out'、'location' の場合のみ）
     
     // 打刻処理に必要なフィールドの存在チェック
-    if (!jsonData.employeeId || !jsonData.timestamp || (action !== 'in' && action !== 'out')) {
+    if (!jsonData.employeeId || !jsonData.timestamp || 
+        (action !== 'in' && action !== 'out' && action !== 'location')) {
       debugSheet.appendRow([new Date(), 'エラー: 無効なアクションまたはパラメータ不足 (' + action + ')']);
       return ContentService.createTextOutput(JSON.stringify({
         result: 'error',
@@ -116,7 +117,10 @@ function doPost(e) {
     // 日付と時刻のフォーマット
     var dateStr = Utilities.formatDate(timestamp, "Asia/Tokyo", "yyyy/MM/dd");
     var timeStr = Utilities.formatDate(timestamp, "Asia/Tokyo", "HH:mm");
-    var actionText = action === 'in' ? '出勤' : '退勤';
+    var actionText = '';
+    if (action === 'in') actionText = '出勤';
+    else if (action === 'out') actionText = '退勤';
+    else if (action === 'location') actionText = '位置情報記録';
     
     // 行の更新または追加
     updateOrAppendRow(logSheet, {
@@ -125,7 +129,8 @@ function doPost(e) {
       name: username,
       action: action,
       time: timeStr,
-      remarks: remarks
+      remarks: remarks,
+      location: jsonData.location // 位置情報
     });
     
     debugSheet.appendRow([new Date(), '部署別シート「' + departmentSheetName + '」に記録完了']);
@@ -251,6 +256,16 @@ function updateOrAppendRow(sheet, data) {
     debugSheet.appendRow([new Date(), 'シートにデータがありません。新規行を追加します。']);
   }
   
+  // 位置情報文字列の作成 (JSON)
+  var locationStr = '';
+  if (data.location) {
+    try {
+      locationStr = JSON.stringify(data.location);
+    } catch (e) {
+      locationStr = 'error: ' + e.message;
+    }
+  }
+  
   if (foundRow > 0) {
     // 既存の行を更新
     debugSheet.appendRow([new Date(), '既存行(' + foundRow + '行目)を更新します']);
@@ -271,9 +286,50 @@ function updateOrAppendRow(sheet, data) {
       sheet.getRange(foundRow, 9).setValue(data.remarks); // I列: 備考
       debugSheet.appendRow([new Date(), '退勤時刻を記録: ' + data.time]);
     }
+
+    // 位置情報の追記 (K列)
+    if (locationStr) {
+      var currentVal = sheet.getRange(foundRow, 11).getValue(); // K列
+      var locArray = [];
+      if (currentVal) {
+        try {
+          // JSONパースを試みる
+          if (typeof currentVal === 'string' && (currentVal.startsWith('[') || currentVal.startsWith('{'))) {
+             locArray = JSON.parse(currentVal);
+             if (!Array.isArray(locArray)) locArray = [locArray]; // 配列でない場合は配列にする
+          }
+        } catch (e) {
+          locArray = [];
+        }
+      }
+      
+      // 今回のデータを追加
+      locArray.push({
+        action: data.action,
+        time: data.time,
+        lat: data.location.lat,
+        lng: data.location.lng,
+        timestamp: new Date().toISOString()
+      });
+      
+      sheet.getRange(foundRow, 11).setValue(JSON.stringify(locArray));
+    }
+
   } else {
     // 新規行を追加
     debugSheet.appendRow([new Date(), '新規行を追加します']);
+
+    // 位置情報の初期配列
+    var initialLocJson = '';
+    if (locationStr) {
+       initialLocJson = JSON.stringify([{
+         action: data.action,
+         time: data.time,
+         lat: data.location.lat,
+         lng: data.location.lng,
+         timestamp: new Date().toISOString()
+       }]);
+    }
     
     // A:日にち, B:社員コード, C:名前, D:種別出勤, E:出勤時刻, F:種別退勤, G:退勤時刻, H:勤務時間, I:備考
     var rowData = [
@@ -285,7 +341,9 @@ function updateOrAppendRow(sheet, data) {
       data.action === 'out' ? '退勤' : '',
       data.action === 'out' ? data.time : '',
       '', // H列: 勤務時間(後で数式を設定)
-      data.remarks // I列: 備考
+      data.remarks, // I列: 備考
+      '', // J列: 承認
+      initialLocJson // K列: 位置情報
     ];
     sheet.appendRow(rowData);
     
@@ -293,6 +351,15 @@ function updateOrAppendRow(sheet, data) {
     var newRow = sheet.getLastRow();
     sheet.getRange(newRow, 8).setFormula('=IF(AND(E' + newRow + '<>"", G' + newRow + '<>""), TEXT(G' + newRow + '-E' + newRow + ', "[h]:mm"), "")');
     debugSheet.appendRow([new Date(), '新規行を追加しました: ' + newRow + '行目']);
+  }
+
+  // 日付順、出勤時刻順に並び替え
+  if (sheet.getLastRow() > 1) {
+    var range = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
+    range.sort([
+      {column: 1, ascending: true}, // A列: 日にち
+      {column: 5, ascending: true}  // E列: 出勤時刻
+    ]);
   }
 }
 
@@ -922,7 +989,13 @@ function getPersonalMonthlyData(e) {
       })).setMimeType(ContentService.MimeType.JSON);
     }
     
-    var logValues = logSheet.getRange(2, 1, logLastRow - 1, 9).getValues(); // I列(備考)まで取得
+    // K列(位置情報)まで取得するよう範囲を拡張
+    // A:1, I:9, J:10, K:11
+    // データがある範囲の最大列数を取得して、K列が含まれているか確認
+    var maxCols = logSheet.getLastColumn();
+    var fetchCols = Math.max(11, maxCols); // 少なくとも11列目までは取得
+    
+    var logValues = logSheet.getRange(2, 1, logLastRow - 1, fetchCols).getValues(); 
     var personalData = {};
     
     // 年月を正規化（"2024-11" → "2024/11" の両方に対応）
@@ -958,6 +1031,20 @@ function getPersonalMonthlyData(e) {
           return String(timeVal);
         };
 
+        // 位置情報のパース
+        var locationLog = [];
+        var kVal = logValues[i][10]; // index 10 = K列
+        if (kVal) {
+          try {
+             if (typeof kVal === 'string' && (kVal.startsWith('[') || kVal.startsWith('{'))) {
+               var parsed = JSON.parse(kVal);
+               locationLog = Array.isArray(parsed) ? parsed : [parsed];
+             }
+          } catch(e) {
+             // パースエラーは無視
+          }
+        }
+
         // 日付をキーにしてデータを格納
         personalData[dateKey] = {
           clockInType: logValues[i][3],
@@ -965,7 +1052,8 @@ function getPersonalMonthlyData(e) {
           clockOutType: logValues[i][5],
           clockOutTime: formatTime(logValues[i][6]),
           workingHours: logValues[i][7],
-          remarks: logValues[i][8]
+          remarks: logValues[i][8],
+          locationLog: locationLog // 位置情報ログを追加
         };
       }
     }

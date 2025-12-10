@@ -178,7 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, 5 * 60 * 1000);
 
-    // 打刻処理（楽観的UI更新）
+    // 打刻処理（楽観的UI更新 + GPS取得）
     async function handleAttendance(type) {
         const employeeId = employeeIdInput.value.trim();
         const gasUrl = localStorage.getItem('attendance_gas_url');
@@ -193,7 +193,22 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // 楽観的UI更新: すぐに成功メッセージと時刻を表示
+        showMessage('位置情報を取得中...', 'success');
+
+        let locationData = null;
+        try {
+            const position = await getCurrentPosition();
+            locationData = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude
+            };
+        } catch (e) {
+            console.warn('位置情報の取得に失敗しました:', e);
+            showMessage('位置情報の取得に失敗しました。このまま記録します。', 'error');
+            // 位置情報なしでも続行
+        }
+
+        // 楽観的UI更新
         let timestamp;
         if (customTimeInput && customTimeInput.value) {
             timestamp = new Date(customTimeInput.value).toISOString();
@@ -208,8 +223,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const actionText = type === 'in' ? '出勤' : '退勤';
 
-        // すぐに成功メッセージを表示
-        showMessage(`${actionText}を記録しました！`, 'success');
+        // 位置情報取得完了後のメッセージ
+        showMessage(`${actionText}を記録しました！` + (locationData ? ' (位置情報あり)' : ''), 'success');
 
         // すぐに打刻時刻を表示
         if (type === 'in') {
@@ -227,25 +242,24 @@ document.addEventListener('DOMContentLoaded', () => {
             action: type,
             employeeId: employeeId,
             timestamp: timestamp,
-            remarks: remarksInput.value.trim()
+            remarks: remarksInput.value.trim(),
+            location: locationData // 位置情報を追加
         };
 
         try {
             const response = await fetch(gasUrl, {
                 method: 'POST',
-                redirect: 'follow',
+                redirect: 'follow', // エラー対策
                 headers: {
                     'Content-Type': 'text/plain;charset=utf-8'
                 },
                 body: JSON.stringify(data)
             });
 
-            const result = await response.json();
+            const result = await response.json(); // ここはテキスト→JSONの厳密なチェックは省略（成功率優先）
 
             if (result.result !== 'success') {
-                // エラーの場合のみ通知
                 showMessage('送信エラーが発生しました。再度お試しください。', 'error');
-                // 表示をクリア
                 if (type === 'in') {
                     clockInDisplay.textContent = '';
                 } else {
@@ -254,8 +268,22 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error('Error:', error);
-            // ネットワークエラーでも成功とみなす（GASは記録されている可能性が高い）
         }
+    }
+
+    // 位置情報取得のヘルパー関数
+    function getCurrentPosition() {
+        return new Promise((resolve, reject) => {
+            if (!navigator.geolocation) {
+                reject(new Error('Geolocation is not supported by this browser.'));
+                return;
+            }
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            });
+        });
     }
 
     function showMessage(msg, type) {
@@ -269,6 +297,57 @@ document.addEventListener('DOMContentLoaded', () => {
 
     clockInBtn.addEventListener('click', () => handleAttendance('in'));
     clockOutBtn.addEventListener('click', () => handleAttendance('out'));
+
+    // --- 定期的な位置情報記録 (1時間ごと) ---
+    function sendLocationLog() {
+        const employeeId = employeeIdInput.value.trim();
+        const gasUrl = localStorage.getItem('attendance_gas_url');
+
+        if (!employeeId || !gasUrl) return;
+
+        getCurrentPosition().then(async (position) => {
+            const locationData = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude
+            };
+
+            const timestamp = new Date().toISOString();
+            const data = {
+                action: 'location',
+                employeeId: employeeId,
+                timestamp: timestamp,
+                location: locationData
+            };
+
+            console.log('Sending periodic location log...', data);
+
+            try {
+                await fetch(gasUrl, {
+                    method: 'POST',
+                    redirect: 'follow',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(data)
+                });
+                console.log('Location log sent successfully.');
+            } catch (e) {
+                console.error('Failed to send location log:', e);
+            }
+        }).catch(err => {
+            console.warn('Periodic location check failed:', err);
+        });
+    }
+
+    // 1時間 = 60分 * 60秒 * 1000ミリ秒
+    const ONE_HOUR = 60 * 60 * 1000;
+
+    // ページを開いてから即座に一度送るか、1時間後か？
+    // 「1時間ごと」なので、まずはインターバルをセット
+    setInterval(sendLocationLog, ONE_HOUR);
+
+    // ページ読み込み時にも一度送信（オプション）
+    // ユーザー体験を損なわないよう少し遅らせて実行
+    setTimeout(sendLocationLog, 5000);
+
 });
 
 // ハンバーガーメニュー制御
