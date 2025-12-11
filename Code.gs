@@ -38,6 +38,9 @@ function doPost(e) {
     } else if (action === 'getApproverDashboard') {
       debugSheet.appendRow([new Date(), 'API実行: getApproverDashboard']);
       return getApproverDashboard(e);
+    } else if (action === 'updateAttendance') {
+       debugSheet.appendRow([new Date(), 'API実行: updateAttendance']);
+       return updateDailyAttendance(e);
     }
     
     // 以下、通常の打刻処理（action が 'in'、'out'、'location' の場合のみ）
@@ -180,6 +183,150 @@ function doPost(e) {
     }));
     output.setMimeType(ContentService.MimeType.JSON);
     return output;
+  }
+}
+
+// 勤怠データの更新処理（月次カレンダーなどからの修正用）
+function updateDailyAttendance(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var debugSheet = ss.getSheetByName('デバッグログ');
+    var jsonData = JSON.parse(e.postData.contents);
+    
+    // 必須パラメータ: employeeId, date(YYYY/MM/dd), clockInTime, clockOutTime
+    var employeeId = jsonData.employeeId;
+    var targetDateStr = jsonData.date; // 修正対象の日付
+    var clockInTime = jsonData.clockInTime; // "HH:mm" or ""
+    var clockOutTime = jsonData.clockOutTime; // "HH:mm" or ""
+    var remarks = jsonData.remarks || "";
+    
+    if (debugSheet) {
+        debugSheet.appendRow([new Date(), '勤怠修正リクエスト: ID=' + employeeId + ', Date=' + targetDateStr]);
+    }
+
+    // 1. 部署名の特定
+    var masterSheet = ss.getSheetByName('社員マスタ');
+    if (!masterSheet) throw new Error('社員マスタが見つかりません');
+    
+    var department = '未設定';
+    var username = '不明';
+    var lastRow = masterSheet.getLastRow();
+    if (lastRow > 1) {
+        var values = masterSheet.getRange(2, 1, lastRow - 1, 3).getValues();
+        for(var i=0; i<values.length; i++) {
+            if(String(values[i][0]) === String(employeeId)) {
+                username = values[i][1];
+                department = values[i][2];
+                break;
+            }
+        }
+    }
+    
+    var departmentSheetName = '打刻_' + department;
+    var logSheet = ss.getSheetByName(departmentSheetName);
+    
+    if(!logSheet) {
+        logSheet = ss.insertSheet(departmentSheetName);
+        logSheet.appendRow(['日にち', '社員コード', '名前', '種別出勤', '出勤時刻', '種別退勤', '退勤時刻', '勤務時間', '備考']);
+    }
+    
+    // 2. 該当行の検索と更新
+    var logLastRow = logSheet.getLastRow();
+    var foundRow = -1;
+    
+    if (logLastRow > 1) {
+         // データ量が多いと遅くなるので、直近のデータから探すか、全件探すか。月次修正なので日付指定は正確。
+         // 日付は A列(1列目), IDは B列(2列目)
+         var dataRange = logSheet.getRange(2, 1, logLastRow - 1, 2).getValues();
+         
+         for(var i=0; i<dataRange.length; i++) {
+             // 日付比較
+             var rowDate = dataRange[i][0];
+             var rowDateStr = '';
+             if (rowDate instanceof Date) {
+                 rowDateStr = Utilities.formatDate(rowDate, "Asia/Tokyo", "yyyy/MM/dd");
+             } else {
+                 rowDateStr = String(rowDate);
+             }
+             
+             // ID比較
+             var rowId = String(dataRange[i][1]);
+             
+             if (rowDateStr === targetDateStr && rowId === String(employeeId)) {
+                 foundRow = i + 2; // ヘッダー分(+1)と0始まりのインデックス(+1)
+                 break;
+             }
+         }
+    }
+    
+    if (foundRow > 0) {
+        // 更新
+        // D:種別出勤, E:出勤, F:種別退勤, G:退勤, I:備考
+        if(clockInTime) {
+            logSheet.getRange(foundRow, 4).setValue('出勤');
+            logSheet.getRange(foundRow, 5).setValue(clockInTime);
+        } else {
+            logSheet.getRange(foundRow, 4).clearContent();
+            logSheet.getRange(foundRow, 5).clearContent();
+        }
+        
+        if(clockOutTime) {
+            logSheet.getRange(foundRow, 6).setValue('退勤');
+            logSheet.getRange(foundRow, 7).setValue(clockOutTime);
+        } else {
+            logSheet.getRange(foundRow, 6).clearContent();
+            logSheet.getRange(foundRow, 7).clearContent();
+        }
+        
+        logSheet.getRange(foundRow, 9).setValue(remarks);
+
+        // 勤務時間(H列)の計算式再設定
+        logSheet.getRange(foundRow, 8).setFormula('=IF(AND(E' + foundRow + '<>"", G' + foundRow + '<>""), TEXT(G' + foundRow + '-E' + foundRow + ', "[h]:mm"), "")');
+        
+        if(debugSheet) debugSheet.appendRow([new Date(), '既存行を更新しました: ' + foundRow + '行目']);
+        
+    } else {
+        // 新規追加
+        // ['日にち', '社員コード', '名前', '種別出勤', '出勤時刻', '種別退勤', '退勤時刻', '勤務時間', '備考']
+        var newRowData = [
+            targetDateStr,
+            employeeId,
+            username,
+            clockInTime ? '出勤' : '',
+            clockInTime,
+            clockOutTime ? '退勤' : '',
+            clockOutTime,
+            '', // 勤務時間(数式)
+            remarks,
+            '', // 承認
+            ''  // 位置情報(手動修正なので空)
+        ];
+        logSheet.appendRow(newRowData);
+        var newRowNum = logSheet.getLastRow();
+        logSheet.getRange(newRowNum, 8).setFormula('=IF(AND(E' + newRowNum + '<>"", G' + newRowNum + '<>""), TEXT(G' + newRowNum + '-E' + newRowNum + ', "[h]:mm"), "")');
+
+        if(debugSheet) debugSheet.appendRow([new Date(), '新規行を追加しました: ' + newRowNum + '行目']);
+    }
+    
+    // ソート
+    if (logSheet.getLastRow() > 1) {
+        var sortRange = logSheet.getRange(2, 1, logSheet.getLastRow() - 1, logSheet.getLastColumn());
+        sortRange.sort([
+            {column: 1, ascending: true}, 
+            {column: 5, ascending: true}
+        ]);
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'success', 
+      message: '勤怠データを修正しました'
+    })).setMimeType(ContentService.MimeType.JSON);
+
+  } catch (e) {
+      return ContentService.createTextOutput(JSON.stringify({
+      result: 'error', 
+      message: e.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
   }
 }
 

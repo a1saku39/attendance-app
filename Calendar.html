@@ -314,6 +314,61 @@
                 padding: 10px;
             }
         }
+
+        input[type="time"],
+        textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 16px;
+            margin-top: 4px;
+        }
+
+        .edit-btn {
+            background-color: #f59e0b;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        .edit-btn:hover {
+            opacity: 0.9;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .save-btn {
+            background-color: #10b981;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            flex: 1;
+            font-weight: 600;
+        }
+
+        .cancel-btn {
+            background-color: #6b7280;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            flex: 1;
+            font-weight: 600;
+        }
     </style>
 </head>
 
@@ -341,23 +396,49 @@
         <!-- 詳細表示エリア -->
         <div id="detailArea" class="detail-card">
             <div class="detail-header" id="detailDate"></div>
-            <div class="detail-content">
-                <div class="detail-row">
-                    <span class="detail-label">出勤時刻</span>
-                    <span class="detail-value" id="detailIn">--:--</span>
+
+            <!-- 閲覧モード -->
+            <div id="viewMode">
+                <div class="detail-content">
+                    <div class="detail-row">
+                        <span class="detail-label">出勤時刻</span>
+                        <span class="detail-value" id="detailIn">--:--</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">退勤時刻</span>
+                        <span class="detail-value" id="detailOut">--:--</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">勤務時間</span>
+                        <span class="detail-value" id="detailWork">--:--</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">備考</span>
+                        <span class="detail-value" id="detailRemarks"
+                            style="font-size: 14px; font-family: sans-serif;">-</span>
+                    </div>
                 </div>
-                <div class="detail-row">
-                    <span class="detail-label">退勤時刻</span>
-                    <span class="detail-value" id="detailOut">--:--</span>
+                <button class="edit-btn" onclick="enableEditMode()">✏️ 打刻を修正する</button>
+            </div>
+
+            <!-- 編集モード -->
+            <div id="editMode" style="display: none;">
+                <input type="hidden" id="editDateStr">
+                <div style="margin-bottom: 15px;">
+                    <label class="detail-label">出勤時刻</label>
+                    <input type="time" id="editIn">
                 </div>
-                <div class="detail-row">
-                    <span class="detail-label">勤務時間</span>
-                    <span class="detail-value" id="detailWork">--:--</span>
+                <div style="margin-bottom: 15px;">
+                    <label class="detail-label">退勤時刻</label>
+                    <input type="time" id="editOut">
                 </div>
-                <div class="detail-row">
-                    <span class="detail-label">備考</span>
-                    <span class="detail-value" id="detailRemarks"
-                        style="font-size: 14px; font-family: sans-serif;">-</span>
+                <div style="margin-bottom: 15px;">
+                    <label class="detail-label">備考</label>
+                    <textarea id="editRemarks" rows="3"></textarea>
+                </div>
+                <div class="action-buttons">
+                    <button class="cancel-btn" onclick="cancelEdit()">キャンセル</button>
+                    <button class="save-btn" onclick="saveAttendance()">保存</button>
                 </div>
             </div>
         </div>
@@ -518,6 +599,10 @@
             document.querySelectorAll('.calendar-day').forEach(el => el.classList.remove('selected-day'));
             cellElement.classList.add('selected-day');
 
+            // モードリセット（閲覧モードへ）
+            document.getElementById('viewMode').style.display = 'block';
+            document.getElementById('editMode').style.display = 'none';
+
             const detailArea = document.getElementById('detailArea');
             const [y, m, d] = dateStr.split('/');
 
@@ -526,19 +611,85 @@
             const dayOfWeek = days[dateObj.getDay()];
             document.getElementById('detailDate').textContent = `${y}年${m}月${d}日 (${dayOfWeek})`;
 
+            // 編集用に日付を保持
+            document.getElementById('editDateStr').value = dateStr;
+
             if (data) {
                 document.getElementById('detailIn').textContent = data.clockInTime || '--:--';
                 document.getElementById('detailOut').textContent = data.clockOutTime || '--:--';
                 document.getElementById('detailWork').textContent = data.workingHours || '--:--';
                 document.getElementById('detailRemarks').textContent = data.remarks || '-';
+
+                // 編集フォームにも値をセット
+                document.getElementById('editIn').value = data.clockInTime || '';
+                document.getElementById('editOut').value = data.clockOutTime || '';
+                document.getElementById('editRemarks').value = data.remarks || '';
             } else {
                 document.getElementById('detailIn').textContent = '--:--';
                 document.getElementById('detailOut').textContent = '--:--';
                 document.getElementById('detailWork').textContent = '--:--';
                 document.getElementById('detailRemarks').textContent = '-';
+
+                // フォームクリア
+                document.getElementById('editIn').value = '';
+                document.getElementById('editOut').value = '';
+                document.getElementById('editRemarks').value = '';
             }
 
             detailArea.style.display = 'block';
+            detailArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function enableEditMode() {
+            document.getElementById('viewMode').style.display = 'none';
+            document.getElementById('editMode').style.display = 'block';
+        }
+
+        function cancelEdit() {
+            document.getElementById('editMode').style.display = 'none';
+            document.getElementById('viewMode').style.display = 'block';
+        }
+
+        function saveAttendance() {
+            const gasUrl = localStorage.getItem('attendance_gas_url');
+            const employeeId = localStorage.getItem('attendance_employee_id');
+            const dateStr = document.getElementById('editDateStr').value;
+            const clockIn = document.getElementById('editIn').value;
+            const clockOut = document.getElementById('editOut').value;
+            const remarks = document.getElementById('editRemarks').value;
+
+            if (!confirm(`${dateStr} の勤怠データを修正しますか？`)) return;
+
+            showMessage('loading', '保存中...');
+
+            const data = {
+                action: 'updateAttendance',
+                employeeId: employeeId,
+                date: dateStr,
+                clockInTime: clockIn,
+                clockOutTime: clockOut,
+                remarks: remarks
+            };
+
+            fetch(gasUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(data)
+            })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.result === 'success') {
+                        alert('保存しました！');
+                        loadCalendarData(); // リロードして最新データを表示
+                    } else {
+                        alert('エラー: ' + result.message);
+                    }
+                })
+                .catch(err => {
+                    alert('通信エラー: ' + err.message);
+                    // メッセージエリアをクリアして元の表示に戻すなどの処理が必要かもしれない
+                    document.getElementById('messageArea').innerHTML = '';
+                });
         }
     </script>
 </body>
