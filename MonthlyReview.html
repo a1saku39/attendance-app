@@ -679,9 +679,13 @@
 
             html += `</div>
                 <div class="approval-section">
-                    <div class="approval-title">📝 承認欄</div>
+                    <div class="approval-title">📝 担当者確認</div>
+                    <p style="margin-bottom: 20px; color: #666; font-size: 14px;">
+                        勤怠データを確認し、間違いがなければ担当者印を押してください。<br>
+                        承認は管理者ダッシュボードから承認者が行います。
+                    </p>
                     <div class="stamp-container">
-                        <div class="stamp-box ${currentApprovalStatus.self ? 'stamped' : ''}">
+                        <div class="stamp-box ${currentApprovalStatus.self ? 'stamped' : ''}" style="margin: 0 auto; max-width: 350px;">
                             <div class="stamp-label">担当者印</div>
                             ${currentApprovalStatus.self ?
                     `<div class="stamp">${currentApprovalStatus.self.name}</div>
@@ -689,17 +693,24 @@
                     `<button class="stamp-button" onclick="stampSelf()">担当者印を押す</button>`
                 }
                         </div>
-                        <div class="stamp-box ${currentApprovalStatus.boss ? 'stamped' : ''}">
-                            <div class="stamp-label">承認印</div>
-                            ${currentApprovalStatus.boss ?
-                    `<div class="stamp">${currentApprovalStatus.boss.name}</div>
-                                 <div class="stamp-date">${formatDate(currentApprovalStatus.boss.date)}</div>` :
-                    currentApprovalStatus.self ?
-                        `<button class="stamp-button" onclick="stampBoss()">承認印を押す</button>` :
-                        `<div style="color: #999; font-size: 13px;">担当者印が必要です</div>`
-                }
-                        </div>
                     </div>
+                    ${currentApprovalStatus.boss ?
+                    `<div style="margin-top: 30px; padding: 15px; background: #f0f8ff; border-radius: 12px; border: 2px solid #4CAF50;">
+                            <div style="font-weight: 600; color: #4CAF50; margin-bottom: 10px;">✅ 承認済み</div>
+                            <div style="font-size: 14px; color: #666;">
+                                承認者: ${currentApprovalStatus.boss.name}<br>
+                                承認日時: ${formatDate(currentApprovalStatus.boss.date)}
+                            </div>
+                        </div>` :
+                    currentApprovalStatus.self ?
+                        `<div style="margin-top: 30px; padding: 15px; background: #fff3cd; border-radius: 12px; border: 2px solid #ffc107;">
+                                <div style="font-weight: 600; color: #856404; margin-bottom: 5px;">⏳ 承認待ち</div>
+                                <div style="font-size: 13px; color: #856404;">
+                                    承認者による承認をお待ちください
+                                </div>
+                            </div>` :
+                        ''
+                }
                 </div>
             </div>`;
 
@@ -764,76 +775,6 @@
                 })
                 .catch(error => {
                     console.error('押印エラー:', error);
-                    showMessage('error', 'エラーが発生しました: ' + error.message);
-                });
-        }
-
-        function stampBoss() {
-            console.log('=== 承認印を押す処理開始 ===');
-            console.log('currentEmployeeId:', currentEmployeeId);
-            console.log('currentYearMonth:', currentYearMonth);
-
-            if (!currentEmployeeId) {
-                showMessage('error', '対象社員コードが設定されていません');
-                return;
-            }
-
-            if (!currentYearMonth) {
-                showMessage('error', '年月が設定されていません');
-                return;
-            }
-
-            const approverId = prompt('承認者の社員コードを入力してください:');
-            if (!approverId) {
-                console.log('承認者コード入力がキャンセルされました');
-                return;
-            }
-
-            console.log('入力された承認者コード:', approverId);
-
-            if (!confirm('承認印を押しますか?\n（押印後は取り消せません）')) {
-                return;
-            }
-
-            const gasUrl = localStorage.getItem('attendance_gas_url');
-            console.log('GAS URL:', gasUrl);
-
-            if (!gasUrl) {
-                showMessage('error', 'GAS WebアプリのURLが設定されていません。設定画面で設定してください。');
-                return;
-            }
-
-            const requestData = {
-                action: 'recordApproval',
-                targetEmployeeId: currentEmployeeId,
-                approverId: approverId,
-                yearMonth: currentYearMonth,
-                type: 'boss'
-            };
-
-            console.log('送信データ:', JSON.stringify(requestData, null, 2));
-
-            fetch(gasUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify(requestData)
-            })
-                .then(response => {
-                    console.log('レスポンスステータス:', response.status);
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('承認結果:', data);
-                    if (data.result === 'success') {
-                        showMessage('success', data.message);
-                        loadMonthlyData();
-                    } else {
-                        showMessage('error', '押印に失敗しました: ' + data.message);
-                        console.error('失敗理由:', data);
-                    }
-                })
-                .catch(error => {
-                    console.error('承認エラー:', error);
                     showMessage('error', 'エラーが発生しました: ' + error.message);
                 });
         }
