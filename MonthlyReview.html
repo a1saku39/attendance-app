@@ -489,8 +489,14 @@
                 .then(response => response.json())
                 .then(data => {
                     console.log('取得したデータ:', data);
+                    console.log('approvalStatus:', data.approvalStatus);
+
                     if (data.result === 'success') {
                         currentApprovalStatus = data.approvalStatus || { self: null, boss: null };
+                        console.log('currentApprovalStatus設定後:', currentApprovalStatus);
+                        console.log('self:', currentApprovalStatus.self);
+                        console.log('boss:', currentApprovalStatus.boss);
+
                         displayMonthlyData(data.data, yearMonth);
 
                         // 2. 承認者かどうかチェックしてダッシュボードを表示
@@ -701,25 +707,51 @@
         }
 
         function stampSelf() {
-            console.log('担当者印を押す:', currentEmployeeId);
+            console.log('=== 担当者印を押す処理開始 ===');
+            console.log('currentEmployeeId:', currentEmployeeId);
+            console.log('currentYearMonth:', currentYearMonth);
+
+            if (!currentEmployeeId) {
+                showMessage('error', '社員コードが設定されていません');
+                return;
+            }
+
+            if (!currentYearMonth) {
+                showMessage('error', '年月が設定されていません');
+                return;
+            }
+
             if (!confirm('担当者印を押しますか?\n（押印後は取り消せません）')) {
                 return;
             }
 
             const gasUrl = localStorage.getItem('attendance_gas_url');
+            console.log('GAS URL:', gasUrl);
+
+            if (!gasUrl) {
+                showMessage('error', 'GAS WebアプリのURLが設定されていません。設定画面で設定してください。');
+                return;
+            }
+
+            const requestData = {
+                action: 'recordApproval',
+                targetEmployeeId: currentEmployeeId,
+                approverId: currentEmployeeId,
+                yearMonth: currentYearMonth,
+                type: 'self'
+            };
+
+            console.log('送信データ:', JSON.stringify(requestData, null, 2));
 
             fetch(gasUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({
-                    action: 'recordApproval',
-                    targetEmployeeId: currentEmployeeId,
-                    approverId: currentEmployeeId,
-                    yearMonth: currentYearMonth,
-                    type: 'self'
-                })
+                body: JSON.stringify(requestData)
             })
-                .then(response => response.json())
+                .then(response => {
+                    console.log('レスポンスステータス:', response.status);
+                    return response.json();
+                })
                 .then(data => {
                     console.log('押印結果:', data);
                     if (data.result === 'success') {
@@ -727,6 +759,7 @@
                         loadMonthlyData();
                     } else {
                         showMessage('error', '押印に失敗しました: ' + data.message);
+                        console.error('失敗理由:', data);
                     }
                 })
                 .catch(error => {
@@ -736,27 +769,59 @@
         }
 
         function stampBoss() {
+            console.log('=== 承認印を押す処理開始 ===');
+            console.log('currentEmployeeId:', currentEmployeeId);
+            console.log('currentYearMonth:', currentYearMonth);
+
+            if (!currentEmployeeId) {
+                showMessage('error', '対象社員コードが設定されていません');
+                return;
+            }
+
+            if (!currentYearMonth) {
+                showMessage('error', '年月が設定されていません');
+                return;
+            }
+
             const approverId = prompt('承認者の社員コードを入力してください:');
-            if (!approverId) return;
+            if (!approverId) {
+                console.log('承認者コード入力がキャンセルされました');
+                return;
+            }
+
+            console.log('入力された承認者コード:', approverId);
 
             if (!confirm('承認印を押しますか?\n（押印後は取り消せません）')) {
                 return;
             }
 
             const gasUrl = localStorage.getItem('attendance_gas_url');
+            console.log('GAS URL:', gasUrl);
+
+            if (!gasUrl) {
+                showMessage('error', 'GAS WebアプリのURLが設定されていません。設定画面で設定してください。');
+                return;
+            }
+
+            const requestData = {
+                action: 'recordApproval',
+                targetEmployeeId: currentEmployeeId,
+                approverId: approverId,
+                yearMonth: currentYearMonth,
+                type: 'boss'
+            };
+
+            console.log('送信データ:', JSON.stringify(requestData, null, 2));
 
             fetch(gasUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({
-                    action: 'recordApproval',
-                    targetEmployeeId: currentEmployeeId,
-                    approverId: approverId,
-                    yearMonth: currentYearMonth,
-                    type: 'boss'
-                })
+                body: JSON.stringify(requestData)
             })
-                .then(response => response.json())
+                .then(response => {
+                    console.log('レスポンスステータス:', response.status);
+                    return response.json();
+                })
                 .then(data => {
                     console.log('承認結果:', data);
                     if (data.result === 'success') {
@@ -764,6 +829,7 @@
                         loadMonthlyData();
                     } else {
                         showMessage('error', '押印に失敗しました: ' + data.message);
+                        console.error('失敗理由:', data);
                     }
                 })
                 .catch(error => {

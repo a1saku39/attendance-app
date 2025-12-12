@@ -640,7 +640,12 @@ function getApprovalStatus(employeeId, yearMonth) {
 function recordApproval(e) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var debugSheet = ss.getSheetByName('デバッグログ');
     var jsonData = JSON.parse(e.postData.contents);
+    
+    if (debugSheet) {
+      debugSheet.appendRow([new Date(), 'recordApproval開始: ' + JSON.stringify(jsonData)]);
+    }
     
     var targetEmployeeId = jsonData.targetEmployeeId; // 承認対象の社員ID
     var yearMonth = jsonData.yearMonth;
@@ -649,22 +654,41 @@ function recordApproval(e) {
     
     // 1. 操作している人の情報を取得（印鑑用）
     var masterSheet = ss.getSheetByName('社員マスタ');
+    if (!masterSheet) {
+      if (debugSheet) debugSheet.appendRow([new Date(), 'エラー: 社員マスタシートが存在しません']);
+      return ContentService.createTextOutput(JSON.stringify({
+        result: 'error',
+        message: '社員マスタシートが存在しません。先に社員マスタを作成してください。'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
     var approverInfo = getEmployeeInfo(masterSheet, approverId);
+    
+    if (debugSheet) {
+      debugSheet.appendRow([new Date(), '承認者情報: ' + (approverInfo ? JSON.stringify(approverInfo) : 'null')]);
+    }
     
     if (!approverInfo) {
       return ContentService.createTextOutput(JSON.stringify({
         result: 'error',
-        message: '操作者の情報がマスタに見つかりません'
+        message: '操作者(社員コード: ' + approverId + ')の情報がマスタに見つかりません。社員マスタに登録してください。'
       })).setMimeType(ContentService.MimeType.JSON);
     }
     
     // 印鑑用テキスト（マスタに印鑑列があればそれを使う、なければ氏名）
     var stampName = approverInfo.stampName || approverInfo.name;
     
+    if (debugSheet) {
+      debugSheet.appendRow([new Date(), '印鑑名: ' + stampName]);
+    }
+    
     // 2. 権限チェック
     if (type === 'self') {
       // 本人確認は本人のみ
       if (String(targetEmployeeId) !== String(approverId)) {
+        if (debugSheet) {
+          debugSheet.appendRow([new Date(), 'エラー: 本人以外の担当者印 - target:' + targetEmployeeId + ', approver:' + approverId]);
+        }
         return ContentService.createTextOutput(JSON.stringify({
           result: 'error',
           message: '本人以外のデータに担当者印は押せません'
@@ -673,19 +697,28 @@ function recordApproval(e) {
     } else if (type === 'boss') {
       // 承認は、対象者の「第1承認者」として登録されている人のみ
       var targetInfo = getEmployeeInfo(masterSheet, targetEmployeeId);
+      
+      if (debugSheet) {
+        debugSheet.appendRow([new Date(), '対象者情報: ' + (targetInfo ? JSON.stringify(targetInfo) : 'null')]);
+      }
+      
       if (!targetInfo) {
          return ContentService.createTextOutput(JSON.stringify({
           result: 'error',
-          message: '対象者の情報が見つかりません'
+          message: '対象者(社員コード: ' + targetEmployeeId + ')の情報が見つかりません'
         })).setMimeType(ContentService.MimeType.JSON);
       }
       
       // マスタの第1承認者名と、操作者の氏名が一致するか確認
       // ※より厳密にはIDで紐付けるべきですが、現状のマスタ構造に合わせて名前一致で判定
+      if (debugSheet) {
+        debugSheet.appendRow([new Date(), '第1承認者チェック - 対象者の第1承認者: "' + targetInfo.firstApprover + '", 操作者名: "' + approverInfo.name + '"']);
+      }
+      
       if (targetInfo.firstApprover !== approverInfo.name) {
          return ContentService.createTextOutput(JSON.stringify({
           result: 'error',
-          message: 'あなたはこの社員の承認権限を持っていません'
+          message: 'あなたはこの社員の承認権限を持っていません。社員マスタのE列(第1承認者)を確認してください。\n対象者の第1承認者: "' + targetInfo.firstApprover + '", あなたの名前: "' + approverInfo.name + '"'
         })).setMimeType(ContentService.MimeType.JSON);
       }
     }
@@ -695,6 +728,7 @@ function recordApproval(e) {
     if (!approvalSheet) {
       approvalSheet = ss.insertSheet('月次承認記録_個人');
       approvalSheet.appendRow(['年月', '社員ID', '本人確認者', '本人確認日時', '承認者', '承認日時']);
+      if (debugSheet) debugSheet.appendRow([new Date(), '月次承認記録_個人シート新規作成']);
     }
     
     var lastRow = approvalSheet.getLastRow();
@@ -711,6 +745,10 @@ function recordApproval(e) {
       }
     }
     
+    if (debugSheet) {
+      debugSheet.appendRow([new Date(), '既存レコード検索結果: ' + (foundRow > 0 ? foundRow + '行目' : '見つからず')]);
+    }
+    
     var now = new Date();
     
     if (foundRow > 0) {
@@ -718,10 +756,12 @@ function recordApproval(e) {
       if (type === 'self') {
         approvalSheet.getRange(foundRow, 3).setValue(stampName);
         approvalSheet.getRange(foundRow, 4).setValue(now);
+        if (debugSheet) debugSheet.appendRow([new Date(), '担当者印更新: ' + foundRow + '行目']);
       } else if (type === 'boss') {
         // 本人確認がまだならエラー
         var selfCheck = approvalSheet.getRange(foundRow, 3).getValue();
         if (!selfCheck) {
+          if (debugSheet) debugSheet.appendRow([new Date(), 'エラー: 本人確認未完了']);
           return ContentService.createTextOutput(JSON.stringify({
             result: 'error',
             message: '本人確認が完了していません'
@@ -729,10 +769,12 @@ function recordApproval(e) {
         }
         approvalSheet.getRange(foundRow, 5).setValue(stampName);
         approvalSheet.getRange(foundRow, 6).setValue(now);
+        if (debugSheet) debugSheet.appendRow([new Date(), '承認印更新: ' + foundRow + '行目']);
       }
     } else {
       // 新規
       if (type === 'boss') {
+        if (debugSheet) debugSheet.appendRow([new Date(), 'エラー: 新規レコードに承認印は押せません']);
         return ContentService.createTextOutput(JSON.stringify({
           result: 'error',
           message: '本人確認が完了していません'
@@ -747,6 +789,11 @@ function recordApproval(e) {
         '',
         ''
       ]);
+      if (debugSheet) debugSheet.appendRow([new Date(), '新規レコード追加']);
+    }
+    
+    if (debugSheet) {
+      debugSheet.appendRow([new Date(), 'recordApproval成功完了']);
     }
     
     return ContentService.createTextOutput(JSON.stringify({
@@ -756,9 +803,17 @@ function recordApproval(e) {
     })).setMimeType(ContentService.MimeType.JSON);
     
   } catch (error) {
+    try {
+      var ss = SpreadsheetApp.getActiveSpreadsheet();
+      var debugSheet = ss.getSheetByName('デバッグログ');
+      if (debugSheet) {
+        debugSheet.appendRow([new Date(), 'recordApprovalエラー: ' + error.toString()]);
+      }
+    } catch (e) {}
+    
     return ContentService.createTextOutput(JSON.stringify({
       result: 'error',
-      message: error.toString()
+      message: 'システムエラー: ' + error.toString()
     })).setMimeType(ContentService.MimeType.JSON);
   }
 }
