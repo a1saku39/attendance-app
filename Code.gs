@@ -47,7 +47,7 @@ function doPost(e) {
     
     // 打刻処理に必要なフィールドの存在チェック
     if (!jsonData.employeeId || !jsonData.timestamp || 
-        (action !== 'in' && action !== 'out' && action !== 'location')) {
+        (action !== 'in' && action !== 'out' && action !== 'location' && action !== 'holiday')) {
       debugSheet.appendRow([new Date(), 'エラー: 無効なアクションまたはパラメータ不足 (' + action + ')']);
       return ContentService.createTextOutput(JSON.stringify({
         result: 'error',
@@ -124,6 +124,7 @@ function doPost(e) {
     if (action === 'in') actionText = '出勤';
     else if (action === 'out') actionText = '退勤';
     else if (action === 'location') actionText = '位置情報記録';
+    else if (action === 'holiday') actionText = jsonData.option === 'paid_leave' ? '有休休暇' : '代休';
     
     // 行の更新または追加
     updateOrAppendRow(logSheet, {
@@ -133,7 +134,9 @@ function doPost(e) {
       action: action,
       time: timeStr,
       remarks: remarks,
-      location: jsonData.location // 位置情報
+      remarks: remarks,
+      location: jsonData.location, // 位置情報
+      option: jsonData.option // 休日オプション
     });
     
     debugSheet.appendRow([new Date(), '部署別シート「' + departmentSheetName + '」に記録完了']);
@@ -432,6 +435,15 @@ function updateOrAppendRow(sheet, data) {
       // 退勤時も備考を更新(上書き)
       sheet.getRange(foundRow, 9).setValue(data.remarks); // I列: 備考
       debugSheet.appendRow([new Date(), '退勤時刻を記録: ' + data.time]);
+    } else if (data.action === 'holiday') {
+      var holidayText = data.option === 'paid_leave' ? '有給休暇' : '代休';
+      sheet.getRange(foundRow, 4).setValue(holidayText); // D列
+      sheet.getRange(foundRow, 5).clearContent(); // E列クリア
+      sheet.getRange(foundRow, 6).clearContent(); // F列クリア
+      sheet.getRange(foundRow, 7).clearContent(); // G列クリア
+      sheet.getRange(foundRow, 9).setValue(data.remarks); // I列
+      sheet.getRange(foundRow, 8).setValue(''); // H列(勤務時間)クリア
+      debugSheet.appendRow([new Date(), '休日記録: ' + holidayText]);
     }
 
     // 位置情報の追記 (K列)
@@ -483,7 +495,7 @@ function updateOrAppendRow(sheet, data) {
       data.date,
       data.id,
       data.name,
-      data.action === 'in' ? '出勤' : '',
+      data.action === 'in' ? '出勤' : (data.action === 'holiday' ? (data.option === 'paid_leave' ? '有給休暇' : '代休') : ''),
       data.action === 'in' ? data.time : '',
       data.action === 'out' ? '退勤' : '',
       data.action === 'out' ? data.time : '',

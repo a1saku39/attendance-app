@@ -81,11 +81,33 @@
                         style="text-align: center; font-size: 0.875rem; color: #dc2626; font-weight: 600; min-height: 20px;">
                     </div>
                 </div>
+                <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 8px;">
+                    <button id="holiday-btn" class="action-btn holiday"
+                        style="background-color: #f59e0b; color: white;">
+                        <span class="icon">🏖️</span>
+                        休日
+                    </button>
+                    <div id="holiday-display"
+                        style="text-align: center; font-size: 0.875rem; color: #d97706; font-weight: 600; min-height: 20px;">
+                    </div>
+                </div>
             </div>
 
             <div class="user-input-group">
                 <label for="remarks">備考</label>
                 <textarea id="remarks" rows="3" placeholder="備考があれば入力してください"></textarea>
+            </div>
+
+            <!-- Holiday Selection Modal -->
+            <div id="holiday-modal" class="modal-overlay" style="display: none;">
+                <div class="modal-content">
+                    <h3>休日の種類を選択</h3>
+                    <div class="modal-actions">
+                        <button id="paid-leave-btn" class="modal-btn primary">有給休暇</button>
+                        <button id="compensatory-leave-btn" class="modal-btn secondary">代休</button>
+                        <button id="cancel-holiday-btn" class="modal-btn cancel">キャンセル</button>
+                    </div>
+                </div>
             </div>
         </main>
 

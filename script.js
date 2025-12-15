@@ -10,6 +10,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const remarksInput = document.getElementById('remarks');
     const clockInDisplay = document.getElementById('clock-in-display');
     const clockOutDisplay = document.getElementById('clock-out-display');
+    const holidayBtn = document.getElementById('holiday-btn');
+    const holidayDisplay = document.getElementById('holiday-display');
+    const holidayModal = document.getElementById('holiday-modal');
+    const paidLeaveBtn = document.getElementById('paid-leave-btn');
+    const compensatoryLeaveBtn = document.getElementById('compensatory-leave-btn');
+    const cancelHolidayBtn = document.getElementById('cancel-holiday-btn');
 
     // 設定のロード
     const savedGasUrl = localStorage.getItem('attendance_gas_url');
@@ -179,7 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 5 * 60 * 1000);
 
     // 打刻処理（楽観的UI更新 + GPS取得）
-    async function handleAttendance(type) {
+    async function handleAttendance(type, option = null) {
         const employeeId = employeeIdInput.value.trim();
         const gasUrl = localStorage.getItem('attendance_gas_url');
 
@@ -222,7 +228,10 @@ document.addEventListener('DOMContentLoaded', () => {
             minute: '2-digit'
         });
 
-        const actionText = type === 'in' ? '出勤' : '退勤';
+        let actionText = '';
+        if (type === 'in') actionText = '出勤';
+        else if (type === 'out') actionText = '退勤';
+        else if (type === 'holiday') actionText = option === 'paid_leave' ? '有給休暇' : '代休';
 
         // 位置情報取得完了後のメッセージ
         showMessage(`${actionText}を記録しました！`, 'success');
@@ -230,8 +239,11 @@ document.addEventListener('DOMContentLoaded', () => {
         // すぐに打刻時刻を表示
         if (type === 'in') {
             clockInDisplay.textContent = `✓ ${displayTime}`;
-        } else {
+        } else if (type === 'out') {
             clockOutDisplay.textContent = `✓ ${displayTime}`;
+        } else if (type === 'holiday') {
+            holidayDisplay.textContent = `✓ ${actionText}`;
+            // 休日設定時は他をクリアすべきか？とりあえずそのまま
         }
 
         // 入力値をクリア
@@ -244,7 +256,9 @@ document.addEventListener('DOMContentLoaded', () => {
             employeeId: employeeId,
             timestamp: timestamp,
             remarks: remarksInput.value.trim(),
-            location: locationData // 位置情報を追加
+            remarks: remarksInput.value.trim(),
+            location: locationData, // 位置情報を追加
+            option: option // 休日種別 (optional)
         };
 
         try {
@@ -263,8 +277,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 showMessage('送信エラーが発生しました。再度お試しください。', 'error');
                 if (type === 'in') {
                     clockInDisplay.textContent = '';
-                } else {
+                } else if (type === 'out') {
                     clockOutDisplay.textContent = '';
+                } else if (type === 'holiday') {
+                    holidayDisplay.textContent = '';
                 }
             }
         } catch (error) {
@@ -298,6 +314,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
     clockInBtn.addEventListener('click', () => handleAttendance('in'));
     clockOutBtn.addEventListener('click', () => handleAttendance('out'));
+
+    // 休日ボタン
+    if (holidayBtn && holidayModal) {
+        holidayBtn.addEventListener('click', () => {
+            holidayModal.style.display = 'flex';
+            setTimeout(() => holidayModal.classList.add('active'), 10);
+        });
+
+        cancelHolidayBtn.addEventListener('click', () => {
+            holidayModal.classList.remove('active');
+            setTimeout(() => holidayModal.style.display = 'none', 300);
+        });
+
+        paidLeaveBtn.addEventListener('click', () => {
+            handleAttendance('holiday', 'paid_leave');
+            holidayModal.classList.remove('active');
+            setTimeout(() => holidayModal.style.display = 'none', 300);
+        });
+
+        compensatoryLeaveBtn.addEventListener('click', () => {
+            handleAttendance('holiday', 'compensatory');
+            holidayModal.classList.remove('active');
+            setTimeout(() => holidayModal.style.display = 'none', 300);
+        });
+    }
 
     // --- 定期的な位置情報記録 (無効化されています) ---
     // function sendLocationLog() {
