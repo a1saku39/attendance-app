@@ -558,10 +558,20 @@
 
                 const cell = document.createElement('div');
                 cell.className = 'calendar-day';
+
+                // Check for holiday
+                const isHoliday = dayData && (dayData.clockInType === '有給休暇' || dayData.clockInType === '代休');
+
                 cell.onclick = () => showDetail(dateStr, dayData, cell);
 
                 if (isCurrentMonth && day === today.getDate()) {
                     cell.classList.add('today');
+                }
+
+                if (isHoliday) {
+                    cell.style.background = 'linear-gradient(135deg, #38bdf8, #0ea5e9)';
+                    cell.style.color = 'white';
+                    cell.style.border = 'none'; // Optional: remove border to look like a fill
                 }
 
                 const currentDayOfWeek = (startDayOfWeek + day - 1) % 7;
@@ -569,25 +579,39 @@
                 if (currentDayOfWeek === 0) dayClass = 'sunday';
                 if (currentDayOfWeek === 6) dayClass = 'saturday';
 
-                let html = `<div class="day-number ${dayClass}">${day}</div>`;
+                // If holiday, force white text for day number
+                let dayStyle = '';
+                if (isHoliday) {
+                    dayStyle = 'style="color: white;"';
+                }
+
+                let html = `<div class="day-number ${dayClass}" ${dayStyle}>${day}</div>`;
 
                 if (dayData) {
-                    html += `<div class="attendance-info">`;
-                    if (dayData.clockInTime) {
+                    if (isHoliday) {
                         html += `
-                            <div class="status-row">
-                                <span class="status-dot status-in"></span>
-                                <span class="time-text">${dayData.clockInTime}</span>
+                            <div class="attendance-info" style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%;">
+                                <div style="font-weight: bold; font-size: 14px; margin-bottom: 2px;">休日</div>
+                                <div style="font-size: 11px; opacity: 0.9;">${dayData.clockInType}</div>
                             </div>`;
+                    } else {
+                        html += `<div class="attendance-info">`;
+                        if (dayData.clockInTime) {
+                            html += `
+                                <div class="status-row">
+                                    <span class="status-dot status-in"></span>
+                                    <span class="time-text">${dayData.clockInTime}</span>
+                                </div>`;
+                        }
+                        if (dayData.clockOutTime) {
+                            html += `
+                                <div class="status-row">
+                                    <span class="status-dot status-out"></span>
+                                    <span class="time-text">${dayData.clockOutTime}</span>
+                                </div>`;
+                        }
+                        html += `</div>`;
                     }
-                    if (dayData.clockOutTime) {
-                        html += `
-                            <div class="status-row">
-                                <span class="status-dot status-out"></span>
-                                <span class="time-text">${dayData.clockOutTime}</span>
-                            </div>`;
-                    }
-                    html += `</div>`;
                 }
 
                 cell.innerHTML = html;

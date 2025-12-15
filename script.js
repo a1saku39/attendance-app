@@ -328,12 +328,22 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         paidLeaveBtn.addEventListener('click', () => {
+            const currentRemarks = remarksInput.value.trim();
+            const textToAdd = "【有給休暇】";
+            if (!currentRemarks.includes(textToAdd)) {
+                remarksInput.value = textToAdd + (currentRemarks ? " " + currentRemarks : "");
+            }
             handleAttendance('holiday', 'paid_leave');
             holidayModal.classList.remove('active');
             setTimeout(() => holidayModal.style.display = 'none', 300);
         });
 
         compensatoryLeaveBtn.addEventListener('click', () => {
+            const currentRemarks = remarksInput.value.trim();
+            const textToAdd = "【代休】";
+            if (!currentRemarks.includes(textToAdd)) {
+                remarksInput.value = textToAdd + (currentRemarks ? " " + currentRemarks : "");
+            }
             handleAttendance('holiday', 'compensatory');
             holidayModal.classList.remove('active');
             setTimeout(() => holidayModal.style.display = 'none', 300);
