@@ -498,7 +498,8 @@ details summary {
     height: 100%;
     background: rgba(0, 0, 0, 0.5);
     z-index: 2000;
-    display: none; /* Changed to flex when active via JS */
+    display: none;
+    /* Changed to flex when active via JS */
     justify-content: center;
     align-items: center;
 }
@@ -519,6 +520,7 @@ details summary {
         opacity: 0;
         transform: scale(0.8);
     }
+
     to {
         opacity: 1;
         transform: scale(1);
@@ -569,6 +571,6 @@ details summary {
 
 /* Overwrite inline style if needed or just enhance */
 .action-btn.holiday {
-    background: linear-gradient(135deg, #f59e0b, #d97706);
-    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+    background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+    box-shadow: 0 4px 15px rgba(14, 165, 233, 0.3);
 }
