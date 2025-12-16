@@ -345,7 +345,7 @@ function updateOrAppendRow(sheet, data) {
   
   // データがある場合、既存の行を検索(直近100行程度を検索対象とする)
   if (lastRow > 1) {
-    var startRow = Math.max(2, lastRow - 100);
+    var startRow = Math.max(2, lastRow - 500);
     var numRows = lastRow - startRow + 1;
     var values = sheet.getRange(startRow, 1, numRows, 2).getValues(); // A列(日付)とB列(コード)を取得
     

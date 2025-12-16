@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusMessage = document.getElementById('status-message');
     const gasUrlInput = document.getElementById('gas-url');
     const saveSettingsBtn = document.getElementById('save-settings');
+    const customDateInput = document.getElementById('custom-date');
     const customTimeInput = document.getElementById('custom-time');
     const remarksInput = document.getElementById('remarks');
     const clockInDisplay = document.getElementById('clock-in-display');
@@ -217,8 +218,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 楽観的UI更新
         let timestamp;
-        if (customTimeInput && customTimeInput.value) {
-            timestamp = new Date(customTimeInput.value).toISOString();
+
+        // 日付と時刻の指定がある場合の処理
+        const dateVal = customDateInput ? customDateInput.value : '';
+        const timeVal = customTimeInput ? customTimeInput.value : '';
+
+        if (dateVal || timeVal) {
+            const now = new Date();
+            let year, month, day, hour, minute, second;
+
+            // 日付の決定
+            if (dateVal) {
+                const dateParts = dateVal.split('-');
+                year = parseInt(dateParts[0]);
+                month = parseInt(dateParts[1]) - 1;
+                day = parseInt(dateParts[2]);
+            } else {
+                year = now.getFullYear();
+                month = now.getMonth();
+                day = now.getDate();
+            }
+
+            // 時刻の決定
+            if (timeVal) {
+                const timeParts = timeVal.split(':');
+                hour = parseInt(timeParts[0]);
+                minute = parseInt(timeParts[1]);
+                second = 0;
+            } else {
+                hour = now.getHours();
+                minute = now.getMinutes();
+                second = now.getSeconds();
+            }
+
+            timestamp = new Date(year, month, day, hour, minute, second).toISOString();
         } else {
             timestamp = new Date().toISOString();
         }
@@ -247,6 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // 入力値をクリア
+        if (customDateInput) customDateInput.value = '';
         if (customTimeInput) customTimeInput.value = '';
         remarksInput.value = '';
 

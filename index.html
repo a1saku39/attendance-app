@@ -55,8 +55,11 @@
             </div>
 
             <div class="user-input-group">
-                <label for="custom-time">時刻指定 (任意)</label>
-                <input type="datetime-local" id="custom-time">
+                <label>日時指定 (任意)</label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="date" id="custom-date" style="flex: 1;">
+                    <input type="time" id="custom-time" style="flex: 1;">
+                </div>
                 <small style="color: #6b7280; font-size: 0.875rem; margin-top: 4px; display: block;">
                     空欄の場合は現在時刻で記録されます
                 </small>
