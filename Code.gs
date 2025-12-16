@@ -66,6 +66,26 @@ function doPost(e) {
     var debugTimeStr = Utilities.formatDate(timestamp, "Asia/Tokyo", "yyyy/MM/dd HH:mm:ss");
     debugSheet.appendRow([new Date(), '社員コード: ' + employeeId + ', アクション: ' + action]);
     debugSheet.appendRow([new Date(), '受信タイムスタンプ(UTC): ' + jsonData.timestamp + ', JST変換後: ' + debugTimeStr]);
+
+    // 【重要】不正なアクションの混入防止
+    // getPersonalMonthlyDataなどがここに来てしまった場合の安全策
+    var validWriteActions = ['in', 'out', 'location', 'holiday'];
+    if (validWriteActions.indexOf(action) === -1) {
+        debugSheet.appendRow([new Date(), 'エラー: 書き込みアクションではありません: ' + action]);
+        return ContentService.createTextOutput(JSON.stringify({
+            result: 'error',
+            message: 'システムエラー: 不正なアクションです'
+        })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // 【重要】日付妥当性チェック (1970年問題対策)
+    if (timestamp.getFullYear() < 2024) {
+        debugSheet.appendRow([new Date(), 'エラー: 不正な日付(1970年等)のため無視しました: ' + debugTimeStr]);
+        return ContentService.createTextOutput(JSON.stringify({
+            result: 'error',
+            message: '日付情報が不正です。再試行してください。'
+        })).setMimeType(ContentService.MimeType.JSON);
+    }
     
     // 1. 社員マスタから名前と部署を検索
     var masterSheet = ss.getSheetByName('社員マスタ');
