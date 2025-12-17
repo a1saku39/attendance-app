@@ -415,6 +415,7 @@
         let currentEmployeeId = '';
         let currentYearMonth = '';
         let currentApprovalStatus = { self: null, boss: null };
+        let isManagerView = false; // 管理者からの遷移かどうかを保持
 
         window.onload = function () {
             // URLパラメータの取得
@@ -422,6 +423,9 @@
             const pEmployeeId = params.get('employeeId');
             const pYearMonth = params.get('yearMonth');
             const pFrom = params.get('from');
+
+            // 管理者からの遷移かどうかを記憶
+            isManagerView = (pFrom === 'manager');
 
             // 今月の設定
             const today = new Date();
@@ -433,7 +437,7 @@
             document.getElementById('employeeId').value = pEmployeeId || savedEmployeeId || '';
 
             // 管理者からの遷移の場合
-            if (pFrom === 'manager') {
+            if (isManagerView) {
                 const backBtn = document.getElementById('backToManagerBtn');
                 if (backBtn) backBtn.style.display = 'inline-block';
             }
@@ -461,7 +465,11 @@
 
             currentEmployeeId = employeeId;
             currentYearMonth = yearMonth;
-            localStorage.setItem('attendance_employee_id', employeeId);
+
+            // 管理者ビューでない場合のみlocalStorageに保存
+            if (!isManagerView) {
+                localStorage.setItem('attendance_employee_id', employeeId);
+            }
 
             document.getElementById('dataArea').innerHTML = '<div class="loading"><div class="spinner"></div>データを読み込んでいます...</div>';
             document.getElementById('approverArea').style.display = 'none';

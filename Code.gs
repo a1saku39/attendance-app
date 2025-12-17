@@ -363,22 +363,26 @@ function updateOrAppendRow(sheet, data) {
   
   debugSheet.appendRow([new Date(), '検索開始: 日付=' + data.date + ', 社員コード=' + data.id + ', アクション=' + data.action]);
   
-  // データがある場合、既存の行を検索(直近100行程度を検索対象とする)
+  // データがある場合、既存の行を検索（全データを対象に検索）
   if (lastRow > 1) {
-    var startRow = Math.max(2, lastRow - 500);
-    var numRows = lastRow - startRow + 1;
+    // 同じ日付・同じ社員コードの行を確実に見つけるため、全データを検索対象とする
+    var startRow = 2;
+    var numRows = lastRow - 1;
     var values = sheet.getRange(startRow, 1, numRows, 2).getValues(); // A列(日付)とB列(コード)を取得
     
-    debugSheet.appendRow([new Date(), '検索範囲: ' + startRow + '行目から' + lastRow + '行目まで(' + numRows + '行)']);
+    debugSheet.appendRow([new Date(), '検索範囲: ' + startRow + '行目から' + lastRow + '行目まで(全' + numRows + '行を検索)']);
     
-    // 下から上に検索
+    // 検索対象の日付を事前にフォーマット
+    var formattedSearchDate = String(data.date).trim();
+    var formattedSearchId = String(data.id).trim();
+    
+    debugSheet.appendRow([new Date(), '検索条件: 日付="' + formattedSearchDate + '", 社員コード="' + formattedSearchId + '"']);
+    
+    // 下から上に検索（最新のデータから検索する方が効率的）
     for (var i = values.length - 1; i >= 0; i--) {
       // 日付と社員コードが一致するか確認
       var sheetDate = values[i][0];
       var sheetId = values[i][1];
-      
-      // デバッグ: 元の値を記録
-      debugSheet.appendRow([new Date(), '行' + (startRow + i) + 'をチェック: A列=' + sheetDate + ' (型:' + typeof sheetDate + '), B列=' + sheetId]);
       
       // 日付を統一フォーマットに変換
       var formattedSheetDate = '';
@@ -390,37 +394,27 @@ function updateOrAppendRow(sheet, data) {
       if (isDateObject) {
         // Dateオブジェクトの場合はフォーマット
         formattedSheetDate = Utilities.formatDate(sheetDate, "Asia/Tokyo", "yyyy/MM/dd");
-        debugSheet.appendRow([new Date(), 'Dateオブジェクトを変換: ' + formattedSheetDate]);
       } else if (sheetDate) {
         // 文字列の場合はそのまま使用
         formattedSheetDate = String(sheetDate).trim();
-        debugSheet.appendRow([new Date(), '文字列として処理: ' + formattedSheetDate]);
       }
-      
-      // 検索対象の日付も統一
-      var formattedSearchDate = String(data.date).trim();
       
       // 社員コードも統一
       var formattedSheetId = String(sheetId).trim();
-      var formattedSearchId = String(data.id).trim();
-      
-      debugSheet.appendRow([new Date(), '比較: シート日付="' + formattedSheetDate + '" vs 検索日付="' + formattedSearchDate + '", シートID="' + formattedSheetId + '" vs 検索ID="' + formattedSearchId + '"']);
       
       // 空白や型の違いを考慮して比較
       var dateMatch = formattedSheetDate === formattedSearchDate;
       var idMatch = formattedSheetId === formattedSearchId;
       
-      debugSheet.appendRow([new Date(), '一致判定: 日付=' + dateMatch + ', ID=' + idMatch]);
-      
       if (dateMatch && idMatch) {
         foundRow = startRow + i;
-        debugSheet.appendRow([new Date(), '✓ 既存行を発見: ' + foundRow + '行目']);
+        debugSheet.appendRow([new Date(), '✓ 既存行を発見: ' + foundRow + '行目 (シート日付="' + formattedSheetDate + '", シートID="' + formattedSheetId + '")']);
         break;
       }
     }
     
     if (foundRow === -1) {
-      debugSheet.appendRow([new Date(), '✗ 既存行が見つかりませんでした。新規行を追加します。']);
+      debugSheet.appendRow([new Date(), '✗ 既存行が見つかりませんでした。全' + numRows + '行を検索しましたが、該当する日付・社員コードの組み合わせは存在しませんでした。新規行を追加します。']);
     }
   } else {
     debugSheet.appendRow([new Date(), 'シートにデータがありません。新規行を追加します。']);
