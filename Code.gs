@@ -8,12 +8,18 @@ function doPost(e) {
       debugSheet.appendRow(['時刻', 'ログ内容']);
     }
 
-    // バージョン確認用ログ (v2.0)
-    debugSheet.appendRow([new Date(), '[INFO] doPost実行 (v2.0)']);
+    // バージョン確認用ログ (v3.1 Fixed)
+    debugSheet.appendRow([new Date(), '[INFO] doPost実行 (v3.1 Fixed)']);
     debugSheet.appendRow([new Date(), '受信データ: ' + e.postData.contents]);
 
     // APIエンドポイントの振り分け
-    var jsonData = JSON.parse(e.postData.contents);
+    var jsonData;
+    try {
+        jsonData = JSON.parse(e.postData.contents);
+    } catch (e) {
+        debugSheet.appendRow([new Date(), 'エラー: JSONパース失敗']);
+        return ContentService.createTextOutput(JSON.stringify({result:'error', message:'Invalid JSON'})).setMimeType(ContentService.MimeType.JSON);
+    }
     var action = jsonData.action;
     
     // 月次確認機能のAPI（これらは打刻処理ではないので、ここで処理を完了させる）
@@ -536,6 +542,137 @@ function updateOrAppendRow(sheet, data) {
   }
 }
 
+// 休日設定を取得する関数
+function getHolidaySettings(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var jsonData = JSON.parse(e.postData.contents);
+    var year = jsonData.year; // 数値または文字列の年
+    
+    var sheet = ss.getSheetByName('設定_休日');
+    if (!sheet) {
+      return ContentService.createTextOutput(JSON.stringify({
+        result: 'success',
+        holidays: {} // シートがなければ空で返す
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    var lastRow = sheet.getLastRow();
+    if (lastRow <= 1) {
+      return ContentService.createTextOutput(JSON.stringify({
+        result: 'success',
+        holidays: {}
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // A列:日付, B:種別
+    var values = sheet.getRange(2, 1, lastRow - 1, 2).getValues();
+    var holidays = {};
+    
+    for (var i = 0; i < values.length; i++) {
+      var dateVal = values[i][0];
+      var type = values[i][1];
+      
+      if (!dateVal) continue;
+      
+      var dateObj = new Date(dateVal);
+      // 指定年のデータのみ抽出
+      if (dateObj.getFullYear() == year) {
+        var dateStr = Utilities.formatDate(dateObj, "Asia/Tokyo", "yyyy-MM-dd");
+        holidays[dateStr] = type;
+      }
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'success',
+      holidays: holidays
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'error',
+      message: error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// 休日設定を保存する関数
+function saveHolidaySettings(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var jsonData = JSON.parse(e.postData.contents);
+    var year = jsonData.year;
+    var holidays = jsonData.holidays; // { "2024-01-01": "holiday", ... }
+    
+    var sheet = ss.getSheetByName('設定_休日');
+    if (!sheet) {
+      sheet = ss.insertSheet('設定_休日');
+      sheet.appendRow(['日付', '種別', '名称']); // ヘッダー
+    }
+    
+    var lastRow = sheet.getLastRow();
+    var newRows = [];
+    
+    // 既存データから、指定年以外のデータを保持
+    if (lastRow > 1) {
+      var existingData = sheet.getRange(2, 1, lastRow - 1, 3).getValues();
+      for (var i = 0; i < existingData.length; i++) {
+        var d = new Date(existingData[i][0]);
+        if (d.getFullYear() != year) {
+          // 日付オブジェクトのまま保持しておくと、書き戻し時にフォーマットが崩れる可能性があるため
+          // 必要に応じてフォーマットするか、そのまま書き戻す。
+          // ここではそのまま書き戻す。
+          newRows.push(existingData[i]);
+        }
+      }
+    }
+    
+    // 新しいデータを追加
+    // holidaysオブジェクトを走査
+    for (var dateStr in holidays) {
+      var type = holidays[dateStr];
+      // 日付文字列からDateオブジェクト作成 (YYYY-MM-DDを想定)
+      // GASの new Date() はハイフン区切りだとUTCになる場合があるため、スラッシュに置換推奨
+      var dateObj = new Date(dateStr.replace(/-/g, '/'));
+      
+      // 名称は簡易的に設定
+      var name = (type === 'holiday') ? '祝日' : '会社休日';
+      
+      newRows.push([dateObj, type, name]);
+    }
+    
+    // ソート（日付順）
+    newRows.sort(function(a, b) {
+      return new Date(a[0]) - new Date(b[0]);
+    });
+    
+    // シートをクリアして全書き換え（ヘッダー以外）
+    if (lastRow > 1) {
+      sheet.getRange(2, 1, lastRow - 1, 3).clearContent();
+    }
+    
+    if (newRows.length > 0) {
+      // 日付のフォーマットを指定して書き込みたいが、setValuesではDateオブジェクトを渡せばスプレッドシート側で認識される。
+      // ただし、formatを指定しないと時間まで表示されることがあるので、A列の表示形式を設定。
+      sheet.getRange(2, 1, newRows.length, 3).setValues(newRows);
+      
+      // A列の表示形式を YYYY/MM/DD に設定
+      sheet.getRange(2, 1, newRows.length, 1).setNumberFormat('yyyy/mm/dd');
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'success',
+      message: '保存しました'
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'error',
+      message: error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
 // ===== 月次確認・承認機能 =====
 
 // GETリクエストの処理(HTMLページの表示用)
@@ -549,6 +686,10 @@ function doGet(e) {
   } else if (page === 'manager-dashboard') {
     return HtmlService.createHtmlOutputFromFile('ManagerDashboard')
       .setTitle('管理者ダッシュボード')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  } else if (page === 'holiday-settings') {
+    return HtmlService.createHtmlOutputFromFile('HolidaySettings')
+      .setTitle('年間休日設定')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
   
