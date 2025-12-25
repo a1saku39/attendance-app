@@ -223,6 +223,17 @@ function doPost(e) {
   }
 }
 
+// ヘルパー: B列が「曜日」かどうかチェックし、なければ追加する
+function ensureDayOfWeekColumn(sheet) {
+  var header = sheet.getRange(1, 2).getValue(); // B1
+  if (header !== '曜日') {
+    sheet.insertColumnAfter(1); // A列の後ろ(B列)に挿入
+    sheet.getRange(1, 2).setValue('曜日');
+    return true; // 変更あり
+  }
+  return false; // 変更なし
+}
+
 // 勤怠データの更新処理（月次カレンダーなどからの修正用）
 function updateDailyAttendance(e) {
   try {
@@ -264,7 +275,9 @@ function updateDailyAttendance(e) {
     
     if(!logSheet) {
         logSheet = ss.insertSheet(departmentSheetName);
-        logSheet.appendRow(['日にち', '社員コード', '名前', '種別出勤', '出勤時刻', '種別退勤', '退勤時刻', '勤務時間', '備考']);
+        logSheet.appendRow(['日にち', '曜日', '社員コード', '名前', '種別出勤', '出勤時刻', '種別退勤', '退勤時刻', '勤務時間', '備考']);
+    } else {
+        ensureDayOfWeekColumn(logSheet);
     }
     
     // 2. 該当行の検索と更新
@@ -272,9 +285,8 @@ function updateDailyAttendance(e) {
     var foundRow = -1;
     
     if (logLastRow > 1) {
-         // データ量が多いと遅くなるので、直近のデータから探すか、全件探すか。月次修正なので日付指定は正確。
-         // 日付は A列(1列目), IDは B列(2列目)
-         var dataRange = logSheet.getRange(2, 1, logLastRow - 1, 2).getValues();
+         // 日付は A列(1列目), IDは C列(3列目) になる
+         var dataRange = logSheet.getRange(2, 1, logLastRow - 1, 3).getValues();
          
          for(var i=0; i<dataRange.length; i++) {
              // 日付比較
@@ -286,61 +298,70 @@ function updateDailyAttendance(e) {
                  rowDateStr = String(rowDate);
              }
              
-             // ID比較
-             var rowId = String(dataRange[i][1]);
+             // ID比較 (C列 = index 2)
+             var rowId = String(dataRange[i][2]);
              
              if (rowDateStr === targetDateStr && rowId === String(employeeId)) {
-                 foundRow = i + 2; // ヘッダー分(+1)と0始まりのインデックス(+1)
+                 foundRow = i + 2; 
                  break;
              }
          }
     }
     
     if (foundRow > 0) {
-        // 更新
-        // D:種別出勤, E:出勤, F:種別退勤, G:退勤, I:備考
+        // 更新 (列番号が全体的に +1 される)
+        // E:種別出勤(5), F:出勤(6), G:種別退勤(7), H:退勤(8), J:備考(10)
+        
         if(clockInTime) {
-            logSheet.getRange(foundRow, 4).setValue('出勤');
-            logSheet.getRange(foundRow, 5).setValue(clockInTime);
+            logSheet.getRange(foundRow, 5).setValue('出勤'); // E
+            logSheet.getRange(foundRow, 6).setValue(clockInTime); // F
         } else {
-            logSheet.getRange(foundRow, 4).clearContent();
             logSheet.getRange(foundRow, 5).clearContent();
+            logSheet.getRange(foundRow, 6).clearContent();
         }
         
         if(clockOutTime) {
-            logSheet.getRange(foundRow, 6).setValue('退勤');
-            logSheet.getRange(foundRow, 7).setValue(clockOutTime);
+            logSheet.getRange(foundRow, 7).setValue('退勤'); // G
+            logSheet.getRange(foundRow, 8).setValue(clockOutTime); // H
         } else {
-            logSheet.getRange(foundRow, 6).clearContent();
             logSheet.getRange(foundRow, 7).clearContent();
+            logSheet.getRange(foundRow, 8).clearContent();
         }
         
-        logSheet.getRange(foundRow, 9).setValue(remarks);
+        logSheet.getRange(foundRow, 10).setValue(remarks); // J:備考
 
-        // 勤務時間(H列)の計算式再設定
-        logSheet.getRange(foundRow, 8).setFormula('=IF(AND(E' + foundRow + '<>"", G' + foundRow + '<>""), TEXT(G' + foundRow + '-E' + foundRow + ', "[h]:mm"), "")');
+        // 勤務時間(I列=9)の計算式再設定
+        logSheet.getRange(foundRow, 9).setFormula('=IF(AND(F' + foundRow + '<>"", H' + foundRow + '<>""), TEXT(H' + foundRow + '-F' + foundRow + ', "[h]:mm"), "")');
         
         if(debugSheet) debugSheet.appendRow([new Date(), '既存行を更新しました: ' + foundRow + '行目']);
         
     } else {
         // 新規追加
-        // ['日にち', '社員コード', '名前', '種別出勤', '出勤時刻', '種別退勤', '退勤時刻', '勤務時間', '備考']
+        // ['日にち', '曜日', '社員コード', '名前', '種別出勤', '出勤時刻', '種別退勤', '退勤時刻', '勤務時間', '備考']
+        
+        // 曜日の計算
+        var targetDate = new Date(targetDateStr);
+        var days = ['日', '月', '火', '水', '木', '金', '土'];
+        var dayOfWeek = days[targetDate.getDay()];
+        
         var newRowData = [
             targetDateStr,
+            dayOfWeek, // B: 曜日
             employeeId,
             username,
             clockInTime ? '出勤' : '',
             clockInTime,
             clockOutTime ? '退勤' : '',
             clockOutTime,
-            '', // 勤務時間(数式)
+            '', // I列: 勤務時間(数式)
             remarks,
-            '', // 承認
-            ''  // 位置情報(手動修正なので空)
+            '', // K列: 承認
+            '' // L列: 位置情報
         ];
         logSheet.appendRow(newRowData);
         var newRowNum = logSheet.getLastRow();
-        logSheet.getRange(newRowNum, 8).setFormula('=IF(AND(E' + newRowNum + '<>"", G' + newRowNum + '<>""), TEXT(G' + newRowNum + '-E' + newRowNum + ', "[h]:mm"), "")');
+        // I列=9.  INPUT: F, H
+        logSheet.getRange(newRowNum, 9).setFormula('=IF(AND(F' + newRowNum + '<>"", H' + newRowNum + '<>""), TEXT(H' + newRowNum + '-F' + newRowNum + ', "[h]:mm"), "")');
 
         if(debugSheet) debugSheet.appendRow([new Date(), '新規行を追加しました: ' + newRowNum + '行目']);
     }
@@ -350,7 +371,7 @@ function updateDailyAttendance(e) {
         var sortRange = logSheet.getRange(2, 1, logSheet.getLastRow() - 1, logSheet.getLastColumn());
         sortRange.sort([
             {column: 1, ascending: true}, 
-            {column: 5, ascending: true}
+            {column: 6, ascending: true} // F列(出勤時刻)でソート
         ]);
     }
     
@@ -372,69 +393,52 @@ function updateOrAppendRow(sheet, data) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var debugSheet = ss.getSheetByName('デバッグログ');
   
+  // 曜日列があるか確認し、なければ追加
+  ensureDayOfWeekColumn(sheet);
+  
   var lastRow = sheet.getLastRow();
   var foundRow = -1;
   
   debugSheet.appendRow([new Date(), '検索開始: 日付=' + data.date + ', 社員コード=' + data.id + ', アクション=' + data.action]);
   
-  // データがある場合、既存の行を検索（全データを対象に検索）
+  // データがある場合、既存の行を検索
   if (lastRow > 1) {
-    // 同じ日付・同じ社員コードの行を確実に見つけるため、全データを検索対象とする
+    // 日付(A), 曜日(B), コード(C)
+    // 検索範囲: A列〜C列
     var startRow = 2;
     var numRows = lastRow - 1;
-    var values = sheet.getRange(startRow, 1, numRows, 2).getValues(); // A列(日付)とB列(コード)を取得
+    var values = sheet.getRange(startRow, 1, numRows, 3).getValues(); 
     
-    debugSheet.appendRow([new Date(), '検索範囲: ' + startRow + '行目から' + lastRow + '行目まで(全' + numRows + '行を検索)']);
-    
-    // 検索対象の日付を事前にフォーマット
+    // 検索対象
     var formattedSearchDate = String(data.date).trim();
     var formattedSearchId = String(data.id).trim();
     
-    debugSheet.appendRow([new Date(), '検索条件: 日付="' + formattedSearchDate + '", 社員コード="' + formattedSearchId + '"']);
-    
-    // 下から上に検索（最新のデータから検索する方が効率的）
+    // 下から上に検索
     for (var i = values.length - 1; i >= 0; i--) {
-      // 日付と社員コードが一致するか確認
-      var sheetDate = values[i][0];
-      var sheetId = values[i][1];
+      var sheetDate = values[i][0]; // A列
+      var sheetId = values[i][2];   // C列
       
-      // 日付を統一フォーマットに変換
       var formattedSheetDate = '';
-      
-      // Dateオブジェクトかどうかを判定(Google Apps Script対応)
       var isDateObject = (typeof sheetDate === 'object' && sheetDate !== null && 
                          (sheetDate instanceof Date || Object.prototype.toString.call(sheetDate) === '[object Date]'));
       
       if (isDateObject) {
-        // Dateオブジェクトの場合はフォーマット
         formattedSheetDate = Utilities.formatDate(sheetDate, "Asia/Tokyo", "yyyy/MM/dd");
       } else if (sheetDate) {
-        // 文字列の場合はそのまま使用
         formattedSheetDate = String(sheetDate).trim();
       }
       
-      // 社員コードも統一
       var formattedSheetId = String(sheetId).trim();
       
-      // 空白や型の違いを考慮して比較
-      var dateMatch = formattedSheetDate === formattedSearchDate;
-      var idMatch = formattedSheetId === formattedSearchId;
-      
-      if (dateMatch && idMatch) {
+      if (formattedSheetDate === formattedSearchDate && formattedSheetId === formattedSearchId) {
         foundRow = startRow + i;
-        debugSheet.appendRow([new Date(), '✓ 既存行を発見: ' + foundRow + '行目 (シート日付="' + formattedSheetDate + '", シートID="' + formattedSheetId + '")']);
+        debugSheet.appendRow([new Date(), '✓ 既存行を発見: ' + foundRow + '行目']);
         break;
       }
     }
-    
-    if (foundRow === -1) {
-      debugSheet.appendRow([new Date(), '✗ 既存行が見つかりませんでした。全' + numRows + '行を検索しましたが、該当する日付・社員コードの組み合わせは存在しませんでした。新規行を追加します。']);
-    }
-  } else {
-    debugSheet.appendRow([new Date(), 'シートにデータがありません。新規行を追加します。']);
   }
-  
-  // 位置情報文字列の作成 (JSON)
+
+  // 位置情報文字列
   var locationStr = '';
   if (data.location) {
     try {
@@ -443,54 +447,79 @@ function updateOrAppendRow(sheet, data) {
       locationStr = 'error: ' + e.message;
     }
   }
-  
+
   if (foundRow > 0) {
-    // 既存の行を更新
-    debugSheet.appendRow([new Date(), '既存行(' + foundRow + '行目)を更新します']);
+    // 既存行更新 (列番号+1)
     
     if (data.action === 'in') {
-      sheet.getRange(foundRow, 4).setValue('出勤'); // D列: 種別出勤
-      sheet.getRange(foundRow, 5).setValue(data.time); // E列: 出勤時刻
-      sheet.getRange(foundRow, 9).setValue(data.remarks); // I列: 備考
-      // 出勤時にも勤務時間の計算式を設定(退勤時刻が既に入力されている場合に備えて)
-      sheet.getRange(foundRow, 8).setFormula('=IF(AND(E' + foundRow + '<>"", G' + foundRow + '<>""), TEXT(G' + foundRow + '-E' + foundRow + ', "[h]:mm"), "")');
-      debugSheet.appendRow([new Date(), '出勤時刻を記録: ' + data.time]);
-    } else if (data.action === 'out') {
-      sheet.getRange(foundRow, 6).setValue('退勤'); // F列: 種別退勤
-      sheet.getRange(foundRow, 7).setValue(data.time); // G列: 退勤時刻
-      // H列に勤務時間の計算式を設定
-      sheet.getRange(foundRow, 8).setFormula('=IF(AND(E' + foundRow + '<>"", G' + foundRow + '<>""), TEXT(G' + foundRow + '-E' + foundRow + ', "[h]:mm"), "")');
-      // 退勤時も備考を更新(上書き)
-      sheet.getRange(foundRow, 9).setValue(data.remarks); // I列: 備考
-      debugSheet.appendRow([new Date(), '退勤時刻を記録: ' + data.time]);
-    } else if (data.action === 'holiday') {
-      var holidayText = data.option === 'paid_leave' ? '有給休暇' : '代休';
-      sheet.getRange(foundRow, 4).setValue(holidayText); // D列
-      sheet.getRange(foundRow, 5).clearContent(); // E列クリア
-      sheet.getRange(foundRow, 6).clearContent(); // F列クリア
-      sheet.getRange(foundRow, 7).clearContent(); // G列クリア
-      sheet.getRange(foundRow, 9).setValue(data.remarks); // I列
-      sheet.getRange(foundRow, 8).setValue(''); // H列(勤務時間)クリア
-      debugSheet.appendRow([new Date(), '休日記録: ' + holidayText]);
-    }
-
-    // 位置情報の追記 (K列)
-    if (locationStr) {
-      var currentVal = sheet.getRange(foundRow, 11).getValue(); // K列
-      var locArray = [];
-      if (currentVal) {
-        try {
-          // JSONパースを試みる
-          if (typeof currentVal === 'string' && (currentVal.startsWith('[') || currentVal.startsWith('{'))) {
-             locArray = JSON.parse(currentVal);
-             if (!Array.isArray(locArray)) locArray = [locArray]; // 配列でない場合は配列にする
-          }
-        } catch (e) {
-          locArray = [];
+      sheet.getRange(foundRow, 5).setValue('出勤'); // E:種別
+      sheet.getRange(foundRow, 6).setValue(data.time); // F:出勤時刻
+      
+      // 備考(J列=10)
+      if (data.remarks) {
+        var remarksCell = sheet.getRange(foundRow, 10);
+        var currentRemarks = String(remarksCell.getValue());
+        if (currentRemarks && currentRemarks !== data.remarks && currentRemarks.indexOf(data.remarks) === -1) {
+             remarksCell.setValue(currentRemarks + ' ' + data.remarks);
+        } else if (!currentRemarks) {
+             remarksCell.setValue(data.remarks);
         }
       }
       
-      // 今回のデータを追加
+      // I列(9): 勤務時間.  F(6), H(8)
+      sheet.getRange(foundRow, 9).setFormula('=IF(AND(F' + foundRow + '<>"", H' + foundRow + '<>""), TEXT(H' + foundRow + '-F' + foundRow + ', "[h]:mm"), "")');
+      debugSheet.appendRow([new Date(), '出勤時刻を記録: ' + data.time]);
+    } else if (data.action === 'out') {
+      sheet.getRange(foundRow, 7).setValue('退勤'); // G:種別
+      sheet.getRange(foundRow, 8).setValue(data.time); // H:退勤時刻
+      // I列(9): 勤務時間
+      sheet.getRange(foundRow, 9).setFormula('=IF(AND(F' + foundRow + '<>"", H' + foundRow + '<>""), TEXT(H' + foundRow + '-F' + foundRow + ', "[h]:mm"), "")');
+      
+      // 備考(J列=10)
+      if (data.remarks) {
+        var remarksCell = sheet.getRange(foundRow, 10);
+        var currentRemarks = String(remarksCell.getValue());
+        if (currentRemarks && currentRemarks !== data.remarks && currentRemarks.indexOf(data.remarks) === -1) {
+             remarksCell.setValue(currentRemarks + ' ' + data.remarks);
+        } else if (!currentRemarks) {
+             remarksCell.setValue(data.remarks);
+        }
+      }
+      debugSheet.appendRow([new Date(), '退勤時刻を記録: ' + data.time]);
+    } else if (data.action === 'holiday') {
+      var holidayText = data.option === 'paid_leave' ? '有給休暇' : '代休';
+      sheet.getRange(foundRow, 5).setValue(holidayText); // E
+      sheet.getRange(foundRow, 6).clearContent(); // F
+      sheet.getRange(foundRow, 7).clearContent(); // G
+      sheet.getRange(foundRow, 8).clearContent(); // H
+      
+      // 備考(J)
+      if (data.remarks) {
+        var remarksCell = sheet.getRange(foundRow, 10);
+        var currentRemarks = String(remarksCell.getValue());
+        if (currentRemarks && currentRemarks !== data.remarks && currentRemarks.indexOf(data.remarks) === -1) {
+            remarksCell.setValue(currentRemarks + ' ' + data.remarks);
+        } else if (!currentRemarks) {
+            remarksCell.setValue(data.remarks);
+        }
+      }
+      
+      sheet.getRange(foundRow, 9).setValue(''); // I(勤務時間)クリア
+      debugSheet.appendRow([new Date(), '休日記録: ' + holidayText]);
+    }
+
+    // 位置情報 (L列=12)
+    if (locationStr) {
+      var currentVal = sheet.getRange(foundRow, 12).getValue(); 
+      var locArray = [];
+      if (currentVal) {
+        try {
+          if (typeof currentVal === 'string' && (currentVal.startsWith('[') || currentVal.startsWith('{'))) {
+             locArray = JSON.parse(currentVal);
+             if (!Array.isArray(locArray)) locArray = [locArray];
+          }
+        } catch (e) { locArray = []; }
+      }
       locArray.push({
         action: data.action,
         time: data.time,
@@ -498,15 +527,11 @@ function updateOrAppendRow(sheet, data) {
         lng: data.location.lng,
         timestamp: new Date().toISOString()
       });
-      
-      sheet.getRange(foundRow, 11).setValue(JSON.stringify(locArray));
+      sheet.getRange(foundRow, 12).setValue(JSON.stringify(locArray));
     }
-
   } else {
-    // 新規行を追加
+    // 新規行
     debugSheet.appendRow([new Date(), '新規行を追加します']);
-
-    // 位置情報の初期配列
     var initialLocJson = '';
     if (locationStr) {
        initialLocJson = JSON.stringify([{
@@ -518,36 +543,84 @@ function updateOrAppendRow(sheet, data) {
        }]);
     }
     
-    // A:日にち, B:社員コード, C:名前, D:種別出勤, E:出勤時刻, F:種別退勤, G:退勤時刻, H:勤務時間, I:備考
+    // 曜日の計算
+    var dateObj = new Date(data.date);
+    var days = ['日', '月', '火', '水', '木', '金', '土'];
+    var dayOfWeek = days[dateObj.getDay()];
+    
+    // A:日にち, B:曜日, C:社員コード, D:名前, E:種別出勤, F:出勤時刻, G:種別退勤, H:退勤時刻, I:勤務時間, J:備考, K:承認, L:位置情報
     var rowData = [
-      data.date,
-      data.id,
-      data.name,
-      data.action === 'in' ? '出勤' : (data.action === 'holiday' ? (data.option === 'paid_leave' ? '有給休暇' : '代休') : ''),
-      data.action === 'in' ? data.time : '',
-      data.action === 'out' ? '退勤' : '',
-      data.action === 'out' ? data.time : '',
-      '', // H列: 勤務時間(後で数式を設定)
-      data.remarks, // I列: 備考
-      '', // J列: 承認
-      initialLocJson // K列: 位置情報
+      data.date,         // A
+      dayOfWeek,         // B (New)
+      data.id,           // C
+      data.name,         // D
+      data.action === 'in' ? '出勤' : (data.action === 'holiday' ? (data.option === 'paid_leave' ? '有給休暇' : '代休') : ''), // E
+      data.action === 'in' ? data.time : '', // F
+      data.action === 'out' ? '退勤' : '',   // G
+      data.action === 'out' ? data.time : '', // H
+      '',                // I (数式)
+      data.remarks,      // J
+      '',                // K
+      initialLocJson     // L
     ];
     sheet.appendRow(rowData);
     
-    // 新規行の場合も勤務時間の計算式を設定
     var newRow = sheet.getLastRow();
-    sheet.getRange(newRow, 8).setFormula('=IF(AND(E' + newRow + '<>"", G' + newRow + '<>""), TEXT(G' + newRow + '-E' + newRow + ', "[h]:mm"), "")');
+    // I列(9)数式
+    sheet.getRange(newRow, 9).setFormula('=IF(AND(F' + newRow + '<>"", H' + newRow + '<>""), TEXT(H' + newRow + '-F' + newRow + ', "[h]:mm"), "")');
+    foundRow = newRow; // For coloring
     debugSheet.appendRow([new Date(), '新規行を追加しました: ' + newRow + '行目']);
   }
-
-  // 日付順、出勤時刻順に並び替え
+  
+  // ソート
   if (sheet.getLastRow() > 1) {
     var range = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
     range.sort([
-      {column: 1, ascending: true}, // A列: 日にち
-      {column: 5, ascending: true}  // E列: 出勤時刻
+      {column: 1, ascending: true}, 
+      {column: 6, ascending: true} // F:出勤時刻
     ]);
   }
+  
+  // === 着色処理 (Company Holiday / Saturday Logic) ===
+  if (foundRow > 0) {
+      applyRowColoring(sheet, foundRow, data.date);
+  }
+}
+
+// 着色ロジック
+function applyRowColoring(sheet, row, dateStr) {
+    // 1. 休日判定
+    var dateObj = new Date(dateStr);
+    var yearMonth = Utilities.formatDate(dateObj, "Asia/Tokyo", "yyyy-MM");
+    var holidaysMap = getAllHolidaysMap(yearMonth);
+    
+    // 土曜日判定
+    var isSaturday = (dateObj.getDay() === 6);
+    
+    // 会社休日判定
+    var formattedDate = Utilities.formatDate(dateObj, "Asia/Tokyo", "yyyy-MM-dd");
+    var holidayType = holidaysMap[formattedDate];
+    var isCompanyHoliday = (holidayType && (holidayType === 'company' || holidayType === 'holiday')); 
+    
+    // 会社の休日の場合、または土曜日に適用 (リクエスト: "会社の休日の場合は、土曜日にカレンダーと同じ色で着色")
+    // 土曜日 または 会社休日 の場合に着色
+    if (isSaturday || isCompanyHoliday) {
+        var range = sheet.getRange(row, 1, 1, sheet.getLastColumn());
+        range.setBackground('#dbeafe'); // Light Blue
+        range.setFontColor('#2563eb');  // Blue Text
+    } else {
+        // 平日の場合
+        var range = sheet.getRange(row, 1, 1, sheet.getLastColumn());
+        range.setBackground(null); 
+        range.setFontColor(null);
+    }
+    
+    // 日曜日
+    if (dateObj.getDay() === 0) {
+        var range = sheet.getRange(row, 1, 1, sheet.getLastColumn());
+        range.setBackground('#fee2e2'); // Light Red
+        range.setFontColor('#dc2626');  // Red Text
+    }
 }
 
 
@@ -790,6 +863,9 @@ function getMonthlyData(e) {
       })).setMimeType(ContentService.MimeType.JSON);
     }
     
+    // 曜日列確認 (Migrate if needed)
+    ensureDayOfWeekColumn(sheet);
+    
     // データを取得
     var lastRow = sheet.getLastRow();
     if (lastRow <= 1) {
@@ -800,7 +876,8 @@ function getMonthlyData(e) {
       })).setMimeType(ContentService.MimeType.JSON);
     }
     
-    var values = sheet.getRange(2, 1, lastRow - 1, 9).getValues();
+    // Read up to Col J (Remarks) = 10 columns
+    var values = sheet.getRange(2, 1, lastRow - 1, 10).getValues();
     var monthlyData = [];
     
     // 指定された年月のデータのみフィルタリング
@@ -815,16 +892,18 @@ function getMonthlyData(e) {
       }
       
       if (dateStr === yearMonth) {
+        // Indices shifted by 1 due to DayOfWeek at index 1
         monthlyData.push({
           date: dateValue instanceof Date ? Utilities.formatDate(dateValue, "Asia/Tokyo", "yyyy/MM/dd") : dateValue,
-          employeeId: values[i][1],
-          name: values[i][2],
-          clockInType: values[i][3],
-          clockInTime: values[i][4],
-          clockOutType: values[i][5],
-          clockOutTime: values[i][6],
-          workingHours: values[i][7],
-          remarks: values[i][8]
+          dayOfWeek: values[i][1], // B列
+          employeeId: values[i][2], // C列
+          name: values[i][3], // D列
+          clockInType: values[i][4], // E列
+          clockInTime: values[i][5], // F列
+          clockOutType: values[i][6], // G列
+          clockOutTime: values[i][7], // H列
+          workingHours: values[i][8], // I列
+          remarks: values[i][9] // J列
         });
       }
     }
@@ -1179,6 +1258,8 @@ function getEmployeesByDepartmentAndMonth(e) {
         employees[i].approved = false;
       }
     } else {
+      ensureDayOfWeekColumn(logSheet);
+      
       // 年月から営業日数を計算（簡易版：土日を除く＋設定された休日を除く）
       var year = parseInt(yearMonth.split('-')[0]);
       var month = parseInt(yearMonth.split('-')[1]);
@@ -1198,7 +1279,8 @@ function getEmployeesByDepartmentAndMonth(e) {
       // 打刻データを取得
       var logLastRow = logSheet.getLastRow();
       if (logLastRow > 1) {
-        var logValues = logSheet.getRange(2, 1, logLastRow - 1, 10).getValues();
+        // Read up to K (Approval) = 11 columns
+        var logValues = logSheet.getRange(2, 1, logLastRow - 1, 11).getValues();
         
         for (var i = 0; i < employees.length; i++) {
           var employeeId = employees[i].employeeId;
@@ -1208,8 +1290,8 @@ function getEmployeesByDepartmentAndMonth(e) {
           // この社員の打刻データを集計
           for (var j = 0; j < logValues.length; j++) {
             var logDate = logValues[j][0];
-            var logId = String(logValues[j][1]);
-            var logApproval = logValues[j][9]; // J列（10列目）
+            var logId = String(logValues[j][2]); // C列 (Index 2)
+            var logApproval = logValues[j][10]; // K列 (Index 10)
             
             // 日付を年月でフィルタ
             var formattedDate = '';
@@ -1264,7 +1346,7 @@ function getEmployeesByDepartmentAndMonth(e) {
   }
 }
 
-// 社員の承認を記録（部署シートのJ列に○を記録）
+// 社員の承認を記録（部署シートのK列に○を記録）
 function approveEmployee(e) {
   try {
     var jsonData = JSON.parse(e.postData.contents);
@@ -1289,19 +1371,22 @@ function approveEmployee(e) {
       })).setMimeType(ContentService.MimeType.JSON);
     }
     
-    // J列に承認フラグを追加（ヘッダーがない場合は追加）
-    var headerRow = logSheet.getRange(1, 1, 1, 10).getValues()[0];
-    if (!headerRow[9]) {
-      logSheet.getRange(1, 10).setValue('承認');
+    ensureDayOfWeekColumn(logSheet);
+    
+    // K列に承認フラグを追加（ヘッダーがない場合は追加）
+    var headerRow = logSheet.getRange(1, 1, 1, 11).getValues()[0];
+    if (!headerRow[10]) { // Index 10 is K
+      logSheet.getRange(1, 11).setValue('承認');
       if (debugSheet) {
-        debugSheet.appendRow([new Date(), 'J列に「承認」ヘッダーを追加しました']);
+        debugSheet.appendRow([new Date(), 'K列に「承認」ヘッダーを追加しました']);
       }
     }
     
-    // 該当社員の該当月のデータを検索してJ列に○を記録
+    // 該当社員の該当月のデータを検索してK列に○を記録
     var lastRow = logSheet.getLastRow();
     if (lastRow > 1) {
-      var values = logSheet.getRange(2, 1, lastRow - 1, 2).getValues();
+      // Read A to C (Date, Day, ID)
+      var values = logSheet.getRange(2, 1, lastRow - 1, 3).getValues();
       var updatedCount = 0;
       
       // 年月を正規化（"2024-11" → "2024/11" の両方に対応）
@@ -1315,7 +1400,7 @@ function approveEmployee(e) {
       
       for (var i = 0; i < values.length; i++) {
         var logDate = values[i][0];
-        var logId = String(values[i][1]);
+        var logId = String(values[i][2]); // C列 (Index 2)
         
         // 日付を年月でフィルタ
         var formattedDate = '';
@@ -1331,7 +1416,7 @@ function approveEmployee(e) {
         var idMatches = (logId === employeeId);
         
         if (dateMatches && idMatches) {
-          logSheet.getRange(i + 2, 10).setValue('○');
+          logSheet.getRange(i + 2, 11).setValue('○'); // K列
           updatedCount++;
           
           if (debugSheet) {
@@ -1364,9 +1449,7 @@ function approveEmployee(e) {
       if (debugSheet) {
         debugSheet.appendRow([new Date(), '承認処理エラー: ' + error.toString()]);
       }
-    } catch (e) {
-      // ログ記録失敗は無視
-    }
+    } catch (e) {}
     
     return ContentService.createTextOutput(JSON.stringify({
       result: 'error',
@@ -1424,6 +1507,8 @@ function getPersonalMonthlyData(e) {
       })).setMimeType(ContentService.MimeType.JSON);
     }
     
+    ensureDayOfWeekColumn(logSheet);
+    
     var logLastRow = logSheet.getLastRow();
     if (logLastRow <= 1) {
       return ContentService.createTextOutput(JSON.stringify({
@@ -1432,11 +1517,9 @@ function getPersonalMonthlyData(e) {
       })).setMimeType(ContentService.MimeType.JSON);
     }
     
-    // K列(位置情報)まで取得するよう範囲を拡張
-    // A:1, I:9, J:10, K:11
-    // データがある範囲の最大列数を取得して、K列が含まれているか確認
+    // L列(位置情報)まで取得するよう範囲を拡張
     var maxCols = logSheet.getLastColumn();
-    var fetchCols = Math.max(11, maxCols); // 少なくとも11列目までは取得
+    var fetchCols = Math.max(12, maxCols); // 少なくとも12列目までは取得
     
     var logValues = logSheet.getRange(2, 1, logLastRow - 1, fetchCols).getValues(); 
     var personalData = {};
@@ -1447,7 +1530,7 @@ function getPersonalMonthlyData(e) {
     
     for (var i = 0; i < logValues.length; i++) {
       var logDate = logValues[i][0];
-      var logId = String(logValues[i][1]);
+      var logId = String(logValues[i][2]); // C列 (Index 2)
       
       // 社員IDチェック
       if (logId !== String(employeeId)) continue;
@@ -1476,7 +1559,7 @@ function getPersonalMonthlyData(e) {
 
         // 位置情報のパース
         var locationLog = [];
-        var kVal = logValues[i][10]; // index 10 = K列
+        var kVal = logValues[i][11]; // index 11 = L列
         if (kVal) {
           try {
              if (typeof kVal === 'string' && (kVal.startsWith('[') || kVal.startsWith('{'))) {
@@ -1489,13 +1572,14 @@ function getPersonalMonthlyData(e) {
         }
 
         // 日付をキーにしてデータを格納
+        // Indices: E:4, F:5, G:6, H:7, I:8, J:9
         personalData[dateKey] = {
-          clockInType: logValues[i][3],
-          clockInTime: formatTime(logValues[i][4]),
-          clockOutType: logValues[i][5],
-          clockOutTime: formatTime(logValues[i][6]),
-          workingHours: logValues[i][7],
-          remarks: logValues[i][8],
+          clockInType: logValues[i][4],
+          clockInTime: formatTime(logValues[i][5]),
+          clockOutType: logValues[i][6],
+          clockOutTime: formatTime(logValues[i][7]),
+          workingHours: logValues[i][8],
+          remarks: logValues[i][9],
           locationLog: locationLog // 位置情報ログを追加
         };
       }
@@ -1503,11 +1587,15 @@ function getPersonalMonthlyData(e) {
     
     // 承認状態を取得
     var approvalStatus = getApprovalStatus(employeeId, yearMonth);
+
+    // 休日情報を取得
+    var holidays = getAllHolidaysMap(yearMonth);
     
     return ContentService.createTextOutput(JSON.stringify({
       result: 'success',
       data: personalData,
-      approvalStatus: approvalStatus
+      approvalStatus: approvalStatus,
+      holidays: holidays
     })).setMimeType(ContentService.MimeType.JSON);
     
   } catch (error) {
@@ -1587,16 +1675,20 @@ function checkAndSendReminders() {
     var isClockedOut = false;
     
     if (logSheet) {
+      // 曜日列確認 (Migrate if needed, though likely not needed for read if we handle indices dynamically, but better safe)
+      ensureDayOfWeekColumn(logSheet);
+      
       // 今日のデータを検索（直近50行を確認）
       var logLastRow = logSheet.getLastRow();
       if (logLastRow > 1) {
         var startRow = Math.max(2, logLastRow - 50);
         var numRows = logLastRow - startRow + 1;
-        var logs = logSheet.getRange(startRow, 1, numRows, 7).getValues(); // G列(退勤時刻)まで
+        // Read up to H (OutTime+1) or just use 8 columns. A to H.
+        var logs = logSheet.getRange(startRow, 1, numRows, 8).getValues(); // H列まで
         
         for (var i = logs.length - 1; i >= 0; i--) {
-          var logDate = logs[i][0];
-          var logId = logs[i][1];
+          var logDate = logs[i][0]; // A列
+          var logId = logs[i][2];   // C列 (Index 2)
           
           var logDateStr = '';
           if (logDate instanceof Date) {
@@ -1607,8 +1699,8 @@ function checkAndSendReminders() {
           
           // 日付とIDが一致するか
           if (logDateStr === todayStr && String(logId) === String(empId)) {
-            if (logs[i][4]) isClockedIn = true; // E列: 出勤時刻
-            if (logs[i][6]) isClockedOut = true; // G列: 退勤時刻
+            if (logs[i][5]) isClockedIn = true; // F列: 出勤時刻 (Index 5)
+            if (logs[i][7]) isClockedOut = true; // H列: 退勤時刻 (Index 7)
             break;
           }
         }
@@ -1746,13 +1838,15 @@ function getApproverDashboard(e) {
       var attendanceCount = 0;
       
       if (logSheet && logSheet.getLastRow() > 1) {
-        // 打刻データをスキャン（効率化のため全取得は避けるべきだが、簡易実装として）
-        var logs = logSheet.getRange(2, 1, logSheet.getLastRow() - 1, 2).getValues();
+        ensureDayOfWeekColumn(logSheet);
+        
+        // Date(A), Day(B), ID(C) -> Read 3 columns
+        var logs = logSheet.getRange(2, 1, logSheet.getLastRow() - 1, 3).getValues();
         var countedDays = {};
         
         for (var j = 0; j < logs.length; j++) {
            var logDate = logs[j][0];
-           var logId = String(logs[j][1]);
+           var logId = String(logs[j][2]); // C列 (Index 2)
            
            if (String(logId) === String(sub.id)) {
              var logYM = '';

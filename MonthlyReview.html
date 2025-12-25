@@ -142,12 +142,22 @@
         }
 
         .calendar-day.has-data {
-            background: #f8f9ff;
             border-color: #667eea;
+            font-weight: bold;
+            background: #f8f9ff;
         }
 
-        .calendar-day.weekend {
-            background: #fff5f5;
+        .calendar-day.saturday,
+        .calendar-day.company-holiday {
+            background-color: #dbeafe !important;
+            color: #2563eb !important;
+            border-color: #2563eb;
+        }
+
+        .calendar-day.sunday {
+            background-color: #fee2e2 !important;
+            color: #dc2626 !important;
+            border-color: #dc2626;
         }
 
         .day-number {
@@ -643,7 +653,7 @@
                 });
         }
 
-        function displayMonthlyData(data, yearMonth) {
+        function displayMonthlyData(data, yearMonth, holidays) {
             const [year, month] = yearMonth.split('-').map(Number);
             const daysInMonth = new Date(year, month, 0).getDate();
             const firstDay = new Date(year, month - 1, 1).getDay();
@@ -651,27 +661,49 @@
             let html = `<div class="data-card">
                 <h2 style="margin-bottom: 20px; color: #333;">${year}年${month}月の勤怠</h2>
                 <div class="calendar-grid">
-                    <div class="calendar-header">日</div>
+                    <div class="calendar-header" style="color: #dc2626;">日</div>
                     <div class="calendar-header">月</div>
                     <div class="calendar-header">火</div>
                     <div class="calendar-header">水</div>
                     <div class="calendar-header">木</div>
                     <div class="calendar-header">金</div>
-                    <div class="calendar-header">土</div>`;
+                    <div class="calendar-header" style="color: #2563eb;">土</div>`;
 
             for (let i = 0; i < firstDay; i++) {
                 html += '<div></div>';
             }
 
             for (let day = 1; day <= daysInMonth; day++) {
-                const dateStr = `${year}/${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}`;
-                const dayData = data[dateStr];
-                const dayOfWeek = new Date(year, month - 1, day).getDay();
-                const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+                // 日付文字列の生成 (yyyy-MM-dd) - 休日マップのキーと一致させる
+                const dateKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                // データアクセスのキー (yyyy/MM/dd) - GASからのデータと一致させる
+                const dataKey = `${year}/${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}`;
+
+                const dayData = data[dataKey];
+                const dateObj = new Date(year, month - 1, day);
+                const dayOfWeek = dateObj.getDay(); // 0:Sun, 6:Sat
 
                 let dayClass = 'calendar-day';
-                if (isWeekend) dayClass += ' weekend';
-                if (dayData && (dayData.clockInTime || dayData.clockOutTime)) dayClass += ' has-data';
+
+                // 1. 休日情報の取得
+                const holidayType = holidays[dateKey];
+                const isCompanyHoliday = (holidayType === 'company' || holidayType === 'holiday');
+
+                // 2. クラスの適用（優先順位: 既存ロジックに合わせる）
+                // 土曜日 または 会社休日 -> 青
+                if (dayOfWeek === 6 || isCompanyHoliday) {
+                    dayClass += ' saturday'; // 青色スタイルを適用 (company-holidayも同じスタイル)
+                }
+
+                // 日曜日 -> 赤 (土曜日/会社休日の色を上書き)
+                if (dayOfWeek === 0) {
+                    dayClass = dayClass.replace(' saturday', ''); // 青を削除して赤にする
+                    dayClass += ' sunday';
+                }
+
+                if (dayData && (dayData.clockInTime || dayData.clockOutTime)) {
+                    dayClass += ' has-data';
+                }
 
                 let timesHtml = '';
                 if (dayData) {
