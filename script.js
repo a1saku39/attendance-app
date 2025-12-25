@@ -279,6 +279,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // 休日設定時は他をクリアすべきか？とりあえずそのまま
         }
 
+        // 備考の内容を保持しておく
+        const remarksVal = remarksInput.value.trim();
+
         // 入力値をクリア
         if (customDateInput) customDateInput.value = '';
         if (customTimeInput) customTimeInput.value = '';
@@ -289,8 +292,7 @@ document.addEventListener('DOMContentLoaded', () => {
             action: type,
             employeeId: employeeId,
             timestamp: timestamp,
-            remarks: remarksInput.value.trim(),
-            remarks: remarksInput.value.trim(),
+            remarks: remarksVal,
             location: locationData, // 位置情報を追加
             option: option // 休日種別 (optional)
         };

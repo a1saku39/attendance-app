@@ -47,6 +47,12 @@ function doPost(e) {
     } else if (action === 'updateAttendance') {
        debugSheet.appendRow([new Date(), 'API実行: updateAttendance']);
        return updateDailyAttendance(e);
+    } else if (action === 'getHolidaySettings') { // Added handler
+       debugSheet.appendRow([new Date(), 'API実行: getHolidaySettings']);
+       return getHolidaySettings(e);
+    } else if (action === 'saveHolidaySettings') { // Added handler
+       debugSheet.appendRow([new Date(), 'API実行: saveHolidaySettings']);
+       return saveHolidaySettings(e);
     }
     
     // 以下、通常の打刻処理（action が 'in'、'out'、'location' の場合のみ）
@@ -67,6 +73,8 @@ function doPost(e) {
     var employeeId = jsonData.employeeId;
     var timestamp = new Date(jsonData.timestamp);
     var remarks = jsonData.remarks || ''; // 備考
+    debugSheet.appendRow([new Date(), '備考受信確認: ' + remarks]); // Debug log
+
     
     // 時刻変換のデバッグログ
     var debugTimeStr = Utilities.formatDate(timestamp, "Asia/Tokyo", "yyyy/MM/dd HH:mm:ss");
@@ -160,7 +168,7 @@ function doPost(e) {
       action: action,
       time: timeStr,
       remarks: remarks,
-      remarks: remarks,
+
       location: jsonData.location, // 位置情報
       option: jsonData.option // 休日オプション
     });
@@ -542,6 +550,62 @@ function updateOrAppendRow(sheet, data) {
   }
 }
 
+
+
+// ===== 休日処理用ヘルパー関数 =====
+
+// 休日設定を一括取得するヘルパー関数
+function getAllHolidaysMap(yearMonth) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('設定_休日');
+  if (!sheet) return {};
+  
+  var lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return {};
+  
+  var values = sheet.getRange(2, 1, lastRow - 1, 2).getValues();
+  var holidays = {};
+  var targetYear = yearMonth ? yearMonth.split('-')[0] : null;
+
+  for (var i = 0; i < values.length; i++) {
+    var d = values[i][0];
+    if (!d) continue;
+    
+    // 日付オブジェクトかどうか確認
+    if (!(d instanceof Date)) {
+      d = new Date(d);
+    }
+    
+    // 年月が指定されているなら、その年のものだけ取得（パフォーマンス用）
+    if (targetYear && String(d.getFullYear()) !== String(targetYear)) continue;
+
+    var dateStr = Utilities.formatDate(d, "Asia/Tokyo", "yyyy-MM-dd");
+    holidays[dateStr] = values[i][1];
+  }
+  return holidays;
+}
+
+// 休日判定関数
+// 指定された日付が休日（土日または設定された休日）かどうかを判定する
+function isHoliday(date, holidays) {
+  var dateStr = Utilities.formatDate(date, "Asia/Tokyo", "yyyy-MM-dd");
+  
+  // 1. 設定された休日かどうか
+  // holidaysマップがあればそれを優先
+  if (holidays && holidays[dateStr]) {
+    // holidays[dateStr] には 'holiday', 'company' などのタイプが入っている想定
+    return true; 
+  }
+  
+  // 2. 土日判定
+  var day = date.getDay();
+  if (day === 0 || day === 6) {
+    return true;
+  }
+  
+  return false;
+}
+
 // 休日設定を取得する関数
 function getHolidaySettings(e) {
   try {
@@ -617,28 +681,37 @@ function saveHolidaySettings(e) {
     if (lastRow > 1) {
       var existingData = sheet.getRange(2, 1, lastRow - 1, 3).getValues();
       for (var i = 0; i < existingData.length; i++) {
-        var d = new Date(existingData[i][0]);
+        var val = existingData[i][0];
+        if (!val) continue; // Skip empty rows
+        
+        var d;
+        if (val instanceof Date) {
+            d = val;
+        } else {
+            d = new Date(val);
+        }
+
+        if (isNaN(d.getTime())) continue; // Skip invalid dates
+
+        // 指定年以外のデータのみ保持
         if (d.getFullYear() != year) {
-          // 日付オブジェクトのまま保持しておくと、書き戻し時にフォーマットが崩れる可能性があるため
-          // 必要に応じてフォーマットするか、そのまま書き戻す。
-          // ここではそのまま書き戻す。
-          newRows.push(existingData[i]);
+           newRows.push(existingData[i]);
         }
       }
     }
     
     // 新しいデータを追加
-    // holidaysオブジェクトを走査
     for (var dateStr in holidays) {
       var type = holidays[dateStr];
-      // 日付文字列からDateオブジェクト作成 (YYYY-MM-DDを想定)
-      // GASの new Date() はハイフン区切りだとUTCになる場合があるため、スラッシュに置換推奨
+      // 日付文字列からDateオブジェクト作成 (YYYY-MM-DD -> YYYY/MM/DD)
+      // ローカル日付としてパースされるようにする
       var dateObj = new Date(dateStr.replace(/-/g, '/'));
       
-      // 名称は簡易的に設定
-      var name = (type === 'holiday') ? '祝日' : '会社休日';
-      
-      newRows.push([dateObj, type, name]);
+      // 有効な日付かチェック
+      if (!isNaN(dateObj.getTime())) {
+        var name = (type === 'holiday') ? '祝日' : '会社休日';
+        newRows.push([dateObj, type, name]);
+      }
     }
     
     // ソート（日付順）
@@ -648,12 +721,11 @@ function saveHolidaySettings(e) {
     
     // シートをクリアして全書き換え（ヘッダー以外）
     if (lastRow > 1) {
+      // データが存在した範囲をクリア
       sheet.getRange(2, 1, lastRow - 1, 3).clearContent();
     }
     
     if (newRows.length > 0) {
-      // 日付のフォーマットを指定して書き込みたいが、setValuesではDateオブジェクトを渡せばスプレッドシート側で認識される。
-      // ただし、formatを指定しないと時間まで表示されることがあるので、A列の表示形式を設定。
       sheet.getRange(2, 1, newRows.length, 3).setValues(newRows);
       
       // A列の表示形式を YYYY/MM/DD に設定
@@ -1107,16 +1179,18 @@ function getEmployeesByDepartmentAndMonth(e) {
         employees[i].approved = false;
       }
     } else {
-      // 年月から営業日数を計算（簡易版：土日を除く）
+      // 年月から営業日数を計算（簡易版：土日を除く＋設定された休日を除く）
       var year = parseInt(yearMonth.split('-')[0]);
       var month = parseInt(yearMonth.split('-')[1]);
       var daysInMonth = new Date(year, month, 0).getDate();
-      var workDays = 0;
       
+      // 休日マップを取得
+      var holidaysMap = getAllHolidaysMap(yearMonth);
+      
+      var workDays = 0;
       for (var day = 1; day <= daysInMonth; day++) {
         var date = new Date(year, month - 1, day);
-        var dayOfWeek = date.getDay();
-        if (dayOfWeek !== 0 && dayOfWeek !== 6) { // 土日以外
+        if (!isHoliday(date, holidaysMap)) {
           workDays++;
         }
       }
@@ -1640,15 +1714,21 @@ function getApproverDashboard(e) {
     }
     
     // 3. 各部下の勤怠状況をチェック
-    // 月の営業日数を計算（土日除く）
+    // 月の営業日数を計算（土日除く＋設定された休日除く）
     var parts = yearMonth.split('-');
     var year = parseInt(parts[0]);
     var month = parseInt(parts[1]);
     var daysInMonth = new Date(year, month, 0).getDate();
+    
+    // 休日マップを取得
+    var holidaysMap = getAllHolidaysMap(yearMonth);
+    
     var workDays = 0;
     for (var d = 1; d <= daysInMonth; d++) {
-      var dayCheck = new Date(year, month - 1, d).getDay();
-      if (dayCheck !== 0 && dayCheck !== 6) workDays++;
+      var dateObj = new Date(year, month - 1, d);
+      if (!isHoliday(dateObj, holidaysMap)) {
+        workDays++;
+      }
     }
     
     var approvalSheet = ss.getSheetByName('月次承認記録_個人');
