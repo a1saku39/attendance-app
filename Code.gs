@@ -941,10 +941,13 @@ function getMonthlyData(e) {
 
 // 承認状態を取得する関数（個人単位）
 function getApprovalStatus(employeeId, yearMonth) {
+  console.log('getApprovalStatus呼び出し - employeeId:', employeeId, 'yearMonth:', yearMonth);
+  
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var approvalSheet = ss.getSheetByName('月次承認記録_個人');
   
   if (!approvalSheet) {
+    console.log('承認シートが存在しません');
     return {
       self: null, // 本人確認
       boss: null  // 上長承認
@@ -952,22 +955,40 @@ function getApprovalStatus(employeeId, yearMonth) {
   }
   
   var lastRow = approvalSheet.getLastRow();
+  console.log('承認シート最終行:', lastRow);
+  
   if (lastRow <= 1) {
+    console.log('承認シートにデータがありません');
     return { self: null, boss: null };
   }
   
   var values = approvalSheet.getRange(2, 1, lastRow - 1, 6).getValues();
+  console.log('承認シートから読み取った行数:', values.length);
+  
   // A:年月, B:社員ID, C:本人確認者, D:本人確認日時, E:承認者, F:承認日時
   
   for (var i = values.length - 1; i >= 0; i--) {
-    if (String(values[i][1]) === String(employeeId) && values[i][0] === yearMonth) {
-      return {
-        self: values[i][2] ? { name: values[i][2], date: values[i][3] } : null,
-        boss: values[i][4] ? { name: values[i][4], date: values[i][5] } : null
+    var rowYearMonth = values[i][0];
+    var rowEmployeeId = String(values[i][1]);
+    var rowSelf = values[i][2];
+    var rowSelfDate = values[i][3];
+    var rowBoss = values[i][4];
+    var rowBossDate = values[i][5];
+    
+    console.log('行' + (i+2) + '確認 - 年月:', rowYearMonth, '社員ID:', rowEmployeeId, '本人:', rowSelf, '承認者:', rowBoss);
+    
+    if (String(rowEmployeeId) === String(employeeId) && rowYearMonth === yearMonth) {
+      console.log('✓ マッチング成功! - 社員ID:', employeeId, '年月:', yearMonth);
+      var result = {
+        self: rowSelf ? { name: rowSelf, date: rowSelfDate } : null,
+        boss: rowBoss ? { name: rowBoss, date: rowBossDate } : null
       };
+      console.log('返却する承認状態:', result);
+      return result;
     }
   }
   
+  console.log('✗ 該当データが見つかりませんでした - 社員ID:', employeeId, '年月:', yearMonth);
   return { self: null, boss: null };
 }
 
@@ -1126,6 +1147,10 @@ function recordApproval(e) {
       ]);
       if (debugSheet) debugSheet.appendRow([new Date(), '新規レコード追加']);
     }
+    
+    
+    console.log('recordApproval成功完了 - type:', type, 'targetEmployeeId:', targetEmployeeId, 'yearMonth:', yearMonth);
+    console.log('書き込んだ行:', foundRow > 0 ? foundRow : '新規行');
     
     if (debugSheet) {
       debugSheet.appendRow([new Date(), 'recordApproval成功完了']);
@@ -1840,10 +1865,19 @@ function getApproverDashboard(e) {
       }
     }
     
+    
     var approvalSheet = ss.getSheetByName('月次承認記録_個人');
     var approvalData = [];
     if (approvalSheet && approvalSheet.getLastRow() > 1) {
       approvalData = approvalSheet.getRange(2, 1, approvalSheet.getLastRow() - 1, 6).getValues();
+      console.log('承認シートから読み取ったデータ行数:', approvalData.length);
+      console.log('対象年月:', yearMonth);
+      // デバッグ: 最初の数行を出力
+      for (var debugIdx = 0; debugIdx < Math.min(5, approvalData.length); debugIdx++) {
+        console.log('承認データ[' + debugIdx + ']:', approvalData[debugIdx]);
+      }
+    } else {
+      console.log('承認シートが存在しないか、データがありません');
     }
     
     // 各部下のデータ処理
@@ -1892,13 +1926,25 @@ function getApproverDashboard(e) {
       
       // 承認状態の確認
       var status = { self: false, boss: false };
+      var foundApproval = false;
       for (var k = 0; k < approvalData.length; k++) {
         // A:年月, B:社員ID, C:本人, E:承認者
-        if (approvalData[k][0] === yearMonth && String(approvalData[k][1]) === String(sub.id)) {
-          if (approvalData[k][2]) status.self = true;
-          if (approvalData[k][4]) status.boss = true;
+        var dataYearMonth = approvalData[k][0];
+        var dataEmployeeId = String(approvalData[k][1]);
+        var dataSelf = approvalData[k][2];
+        var dataBoss = approvalData[k][4];
+        
+        if (dataYearMonth === yearMonth && dataEmployeeId === String(sub.id)) {
+          if (dataSelf) status.self = true;
+          if (dataBoss) status.boss = true;
+          foundApproval = true;
+          console.log('✓ 承認状態取得成功 - 社員ID:', sub.id, '名前:', sub.name, 'yearMonth:', yearMonth, 'self:', status.self, 'boss:', status.boss);
           break;
         }
+      }
+      
+      if (!foundApproval) {
+        console.log('✗ 承認データ未発見 - 社員ID:', sub.id, '名前:', sub.name, 'yearMonth:', yearMonth);
       }
       
       sub.attendanceDays = attendanceCount;
