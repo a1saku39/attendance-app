@@ -666,8 +666,8 @@ function getAllHolidaysMap(yearMonth) {
       d = new Date(d);
     }
     
-    // 年月が指定されているなら、その年のものだけ取得（パフォーマンス用）
-    if (targetYear && String(d.getFullYear()) !== String(targetYear)) continue;
+    // 年月が指定されているなら、その年のものだけ取得（パフォーマンス用）--> 一旦無効化（トラブルシュート）
+    // if (targetYear && String(d.getFullYear()) !== String(targetYear)) continue;
 
     var dateStr = Utilities.formatDate(d, "Asia/Tokyo", "yyyy-MM-dd");
     holidays[dateStr] = values[i][1];
@@ -1904,8 +1904,10 @@ function getApproverDashboard(e) {
       sub.attendanceDays = attendanceCount;
       sub.workDays = workDays;
       sub.status = status;
-      // 承認可能条件: (平日日数 <= 打刻日数) AND (本人確認済み) AND (未承認)
-      sub.canApprove = (attendanceCount >= workDays) && status.self && !status.boss;
+      // 承認可能条件: (本人確認済み) AND (未承認)
+      // ※以前は (attendanceCount >= workDays) も条件に含めていましたが、有給等の扱いや途中承認の柔軟性のため除外しました
+      // 社員本人が「担当者印」を押していれば、日数が不足していても承認プロセスに進めるようにします
+      sub.canApprove = status.self && !status.boss;
     }
     
     return ContentService.createTextOutput(JSON.stringify({

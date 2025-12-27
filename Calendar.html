@@ -512,9 +512,11 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.result === 'success') {
+                        console.log('取得データ:', data);
+                        console.log('休日データ:', data.holidays);
                         document.getElementById('messageArea').innerHTML = '';
                         currentAttendanceData = data.data;
-                        renderCalendar(yearMonth, data.data);
+                        renderCalendar(yearMonth, data.data, data.holidays || {});
                     } else {
                         showMessage('error', 'データ取得エラー: ' + data.message);
                     }
@@ -524,9 +526,12 @@
                 });
         }
 
-        function renderCalendar(yearMonth, attendanceData) {
+        function renderCalendar(yearMonth, attendanceData, holidays) {
             const grid = document.getElementById('calendarGrid');
             const [year, month] = yearMonth.split('-').map(Number);
+
+            // holidaysが未定義の場合は空オブジェクトにする
+            if (!holidays) holidays = {};
 
             const days = ['日', '月', '火', '水', '木', '金', '土'];
             days.forEach((day, index) => {
@@ -553,14 +558,27 @@
             const isCurrentMonth = today.getFullYear() === year && (today.getMonth() + 1) === month;
 
             for (let day = 1; day <= daysInMonth; day++) {
+                // YYYY/MM/DD (データアクセス用)
                 const dateStr = `${year}/${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}`;
+                // YYYY-MM-DD (休日マップ用)
+                const dateKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
                 const dayData = attendanceData[dateStr];
 
                 const cell = document.createElement('div');
                 cell.className = 'calendar-day';
 
-                // Check for holiday
-                const isHoliday = dayData && (dayData.clockInType === '有給休暇' || dayData.clockInType === '代休');
+                // Check for holiday from holidays map or attendance data
+                let holidayType = null;
+                try {
+                    if (holidays && typeof holidays === 'object' && dateKey in holidays) {
+                        holidayType = holidays[dateKey];
+                    }
+                } catch (e) { }
+
+                const isConfigHoliday = (holidayType === 'company' || holidayType === 'holiday');
+                const isAttendanceHoliday = dayData && (dayData.clockInType === '有給休暇' || dayData.clockInType === '代休');
+                const isHoliday = isConfigHoliday || isAttendanceHoliday;
 
                 cell.onclick = () => showDetail(dateStr, dayData, cell);
 
@@ -569,9 +587,20 @@
                 }
 
                 if (isHoliday) {
-                    cell.style.background = 'linear-gradient(135deg, #38bdf8, #0ea5e9)';
-                    cell.style.color = 'white';
-                    cell.style.border = 'none'; // Optional: remove border to look like a fill
+                    if (isAttendanceHoliday) {
+                        // 有給休暇などは水色
+                        cell.style.background = 'linear-gradient(135deg, #38bdf8, #0ea5e9)';
+                    } else if (holidayType === 'company') {
+                        // 会社休日は青
+                        cell.style.background = '#dbeafe';
+                        cell.style.color = '#2563eb';
+                        cell.style.border = '1px solid #93c5fd';
+                    } else {
+                        // 祝日は赤
+                        cell.style.background = '#fee2e2';
+                        cell.style.color = '#dc2626';
+                        cell.style.border = '1px solid #fca5a5';
+                    }
                 }
 
                 const currentDayOfWeek = (startDayOfWeek + day - 1) % 7;
@@ -579,10 +608,15 @@
                 if (currentDayOfWeek === 0) dayClass = 'sunday';
                 if (currentDayOfWeek === 6) dayClass = 'saturday';
 
-                // If holiday, force white text for day number
+                // If holiday (attendance holiday gets white text)
                 let dayStyle = '';
-                if (isHoliday) {
+                if (isAttendanceHoliday) {
                     dayStyle = 'style="color: white;"';
+                } else if (isConfigHoliday) {
+                    // Configured holidays retain their specific colors set above in cell style, so day number inherits
+                    // But we want to ensure consistency
+                    if (holidayType === 'company') dayStyle = 'style="color: #2563eb;"';
+                    else dayStyle = 'style="color: #dc2626;"';
                 }
 
                 let html = `<div class="day-number ${dayClass}" ${dayStyle}>${day}</div>`;
