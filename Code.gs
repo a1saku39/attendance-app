@@ -1,15 +1,22 @@
 function doPost(e) {
   try {
-    // デバッグ用ログシートの準備（最優先で確保）
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var debugSheet = ss.getSheetByName('デバッグログ');
-    if (!debugSheet) {
-      debugSheet = ss.insertSheet('デバッグログ');
-      debugSheet.appendRow(['時刻', 'ログ内容']);
-    }
+    // デバッグログ出力の無効化（ユーザー要望により停止）
+    // 既存のコードが debugSheet.appendRow を呼び出してもエラーにならないようにダミーオブジェクトを作成
+    var debugSheet = {
+      appendRow: function(row) {
+        // ログはスプレッドシートには出力せず、Cloud Logging (console.log) に出力する
+        // try-catchで囲んで安全に実行
+        try {
+           var msg = row.map(function(item){ return item instanceof Date ? Utilities.formatDate(item, "Asia/Tokyo", "yyyy/MM/dd HH:mm:ss") : item; }).join(' | ');
+           console.log(msg);
+        } catch(e) {}
+      }
+    };
 
-    // バージョン確認用ログ (v3.1 Fixed)
-    debugSheet.appendRow([new Date(), '[INFO] doPost実行 (v3.1 Fixed)']);
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    
+    // バージョン確認用ログ (v3.2 DebugDisabled)
+    debugSheet.appendRow([new Date(), '[INFO] doPost実行 (v3.2 DebugDisabled)']);
     debugSheet.appendRow([new Date(), '受信データ: ' + e.postData.contents]);
 
     // APIエンドポイントの振り分け
@@ -71,6 +78,16 @@ function doPost(e) {
     
     // POSTデータから必要な情報を取得
     var employeeId = jsonData.employeeId;
+    
+    // タイムスタンプのバリデーション
+    if (!jsonData.timestamp) {
+         debugSheet.appendRow([new Date(), 'エラー: timestampが欠落しています']);
+         return ContentService.createTextOutput(JSON.stringify({
+            result: 'error',
+            message: '打刻時刻情報が不足しています'
+        })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
     var timestamp = new Date(jsonData.timestamp);
     var remarks = jsonData.remarks || ''; // 備考
     debugSheet.appendRow([new Date(), '備考受信確認: ' + remarks]); // Debug log

@@ -171,6 +171,25 @@
             line-height: 1.4;
         }
 
+        .holiday-label {
+            font-size: 9px;
+            color: #fff;
+            background-color: #ef4444;
+            /* Default red for public holidays */
+            border-radius: 3px;
+            padding: 1px 3px;
+            margin: 2px 0;
+            text-align: center;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .holiday-label.company {
+            background-color: #3b82f6;
+            /* Blue for company holidays */
+        }
+
+
         .approval-section {
             border-top: 2px solid #e0e0e0;
             padding-top: 30px;
@@ -515,7 +534,7 @@
                         console.log('self:', currentApprovalStatus.self);
                         console.log('boss:', currentApprovalStatus.boss);
 
-                        displayMonthlyData(data.data, yearMonth);
+                        displayMonthlyData(data.data, yearMonth, data.holidays || {});
 
                         // 2. 承認者かどうかチェックしてダッシュボードを表示
                         loadApproverDashboard(gasUrl, employeeId, yearMonth);
@@ -654,6 +673,9 @@
         }
 
         function displayMonthlyData(data, yearMonth, holidays) {
+            // holidaysが未定義の場合は空オブジェクトにする
+            if (!holidays) holidays = {};
+
             const [year, month] = yearMonth.split('-').map(Number);
             const daysInMonth = new Date(year, month, 0).getDate();
             const firstDay = new Date(year, month - 1, 1).getDay();
@@ -686,7 +708,8 @@
                 let dayClass = 'calendar-day';
 
                 // 1. 休日情報の取得
-                const holidayType = holidays[dateKey];
+                // 1. 休日情報の取得
+                const holidayType = (holidays && holidays[dateKey]) ? holidays[dateKey] : null;
                 const isCompanyHoliday = (holidayType === 'company' || holidayType === 'holiday');
 
                 // 2. クラスの適用（優先順位: 既存ロジックに合わせる）
@@ -711,8 +734,16 @@
                     if (dayData.clockOutTime) timesHtml += `退: ${dayData.clockOutTime}`;
                 }
 
+                let holidayLabelHtml = '';
+                if (holidayType) {
+                    const labelText = (holidayType === 'holiday') ? '祝日' : '会社休日';
+                    const labelClass = (holidayType === 'company') ? 'holiday-label company' : 'holiday-label';
+                    holidayLabelHtml = `<div class="${labelClass}">${labelText}</div>`;
+                }
+
                 html += `<div class="${dayClass}">
                     <div class="day-number">${day}</div>
+                    ${holidayLabelHtml}
                     <div class="day-times">${timesHtml}</div>
                 </div>`;
             }
@@ -833,10 +864,12 @@
             messageArea.innerHTML = '';
             messageArea.appendChild(messageDiv);
 
-            setTimeout(() => {
-                messageDiv.style.opacity = '0';
-                setTimeout(() => messageDiv.remove(), 300);
-            }, 5000);
+            if (type !== 'error') {
+                setTimeout(() => {
+                    messageDiv.style.opacity = '0';
+                    setTimeout(() => messageDiv.remove(), 300);
+                }, 5000);
+            }
         }
     </script>
 </body>
