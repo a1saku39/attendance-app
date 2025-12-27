@@ -1887,17 +1887,20 @@ function getApproverDashboard(e) {
       var logSheet = ss.getSheetByName(sheetName);
       
       var attendanceCount = 0;
+      var incompleteDays = []; // 退勤未打刻の日付リスト
       
       if (logSheet && logSheet.getLastRow() > 1) {
         ensureDayOfWeekColumn(logSheet);
         
-        // Date(A), Day(B), ID(C) -> Read 3 columns
-        var logs = logSheet.getRange(2, 1, logSheet.getLastRow() - 1, 3).getValues();
+        // Date(A), Day(B), ID(C), Name(D), InType(E), InTime(F), OutType(G), OutTime(H)
+        var logs = logSheet.getRange(2, 1, logSheet.getLastRow() - 1, 8).getValues();
         var countedDays = {};
         
         for (var j = 0; j < logs.length; j++) {
            var logDate = logs[j][0];
            var logId = String(logs[j][2]); // C列 (Index 2)
+           var clockInTime = logs[j][5]; // F列
+           var clockOutTime = logs[j][7]; // H列
            
            if (String(logId) === String(sub.id)) {
              var logYM = '';
@@ -1918,6 +1921,11 @@ function getApproverDashboard(e) {
                if (!countedDays[dateKey]) {
                  countedDays[dateKey] = true;
                  attendanceCount++;
+                 
+                 // 出勤はあるが退勤がない場合
+                 if (clockInTime && !clockOutTime) {
+                   incompleteDays.push(dateKey);
+                 }
                }
              }
            }
@@ -1947,9 +1955,11 @@ function getApproverDashboard(e) {
         console.log('✗ 承認データ未発見 - 社員ID:', sub.id, '名前:', sub.name, 'yearMonth:', yearMonth);
       }
       
+      
       sub.attendanceDays = attendanceCount;
       sub.workDays = workDays;
       sub.status = status;
+      sub.incompleteDays = incompleteDays; // 退勤未打刻の日付リスト
       // 承認可能条件: (本人確認済み) AND (未承認)
       // ※以前は (attendanceCount >= workDays) も条件に含めていましたが、有給等の扱いや途中承認の柔軟性のため除外しました
       // 社員本人が「担当者印」を押していれば、日数が不足していても承認プロセスに進めるようにします

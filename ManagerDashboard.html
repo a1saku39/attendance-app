@@ -392,6 +392,11 @@
                 const progressText = `${sub.attendanceDays}/${sub.workDays}日`;
                 const isComplete = sub.attendanceDays >= sub.workDays;
 
+                // 退勤未打刻の警告
+                const incompleteWarning = sub.incompleteDays && sub.incompleteDays.length > 0
+                    ? `<span style="color:#ef4444; font-size:11px; display:block;">⚠️ 退勤未打刻: ${sub.incompleteDays.length}日</span>`
+                    : '';
+
                 let statusBadge = '';
                 let actionBtn = '';
 
@@ -421,6 +426,7 @@
                         <td>
                             ${progressText}
                             ${!isComplete ? '<span style="color:red; font-size:10px">不足</span>' : ''}
+                            ${incompleteWarning}
                         </td>
                         <td class="hide-mobile" style="text-align:center;">${selfCheckIcon}</td>
                         <td>${statusBadge}</td>
