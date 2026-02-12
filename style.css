@@ -256,14 +256,55 @@ details summary {
 
 /* ハンバーガーメニュー関連のスタイル */
 .menu-button {
-    background: transparent;
+    background: linear-gradient(135deg, #4f46e5, #4338ca);
     border: none;
-    font-size: 1.5rem;
+    border-radius: 12px;
     cursor: pointer;
-    color: #4f46e5;
-    padding: 5px;
+    color: white;
+    padding: 10px 16px;
     z-index: 50;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+}
+
+.menu-button:hover {
+    background: linear-gradient(135deg, #4338ca, #3730a3);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+}
+
+.menu-button:active {
+    transform: translateY(0);
+}
+
+.menu-icon {
+    font-size: 1.3rem;
     line-height: 1;
+}
+
+.menu-text {
+    font-size: 0.9rem;
+    letter-spacing: 0.02em;
+}
+
+@media (max-width: 480px) {
+    .menu-button {
+        padding: 8px 12px;
+        font-size: 0.85rem;
+    }
+
+    .menu-icon {
+        font-size: 1.2rem;
+    }
+
+    .menu-text {
+        font-size: 0.85rem;
+    }
 }
 
 .overlay {
