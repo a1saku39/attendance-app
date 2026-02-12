@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>要望・フィードバック - 勤怠管理アプリ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 15px;
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            opacity: 0.9;
+            transition: opacity 0.2s;
+        }
+
+        .back-link:hover {
+            opacity: 1;
+        }
+
+        .header {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 28px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .form-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .required {
+            color: #ef4444;
+            margin-left: 4px;
+        }
+
+        input,
+        textarea,
+        select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 15px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+
+        input:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 150px;
+        }
+
+        .category-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+        }
+
+        .category-option {
+            position: relative;
+        }
+
+        .category-option input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .category-label {
+            display: block;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .category-option input[type="radio"]:checked+.category-label {
+            border-color: #667eea;
+            background: #eff6ff;
+            color: #667eea;
+        }
+
+        .category-label:hover {
+            border-color: #667eea;
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-submit:active {
+            transform: translateY(0);
+        }
+
+        .btn-submit:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .message {
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            display: none;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+            display: block;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+            display: block;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+        }
+
+        .info-box h3 {
+            color: #1976d2;
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+
+        .info-box p {
+            color: #555;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .examples {
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 15px;
+        }
+
+        .examples h4 {
+            color: #333;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .examples ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .examples li {
+            padding: 8px 0;
+            color: #666;
+            font-size: 13px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .examples li:last-child {
+            border-bottom: none;
+        }
+
+        .examples li::before {
+            content: "💡 ";
+            margin-right: 8px;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .header,
+            .form-card {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 22px;
+            }
+
+            .category-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← メニューへ戻る</a>
+
+        <div class="header">
+            <h1>💡 要望・フィードバック</h1>
+            <p class="subtitle">
+                勤怠管理システムへのご要望、改善提案、不具合報告などをお寄せください。<br>
+                いただいたフィードバックは今後の改善に活用させていただきます。
+            </p>
+        </div>
+
+        <div id="messageArea"></div>
+
+        <div class="form-card">
+            <div class="info-box">
+                <h3>📝 フィードバックについて</h3>
+                <p>
+                    システムの改善にご協力ください。どんな小さなことでも構いません。<br>
+                    送信いただいた内容は管理者が確認し、対応を検討いたします。
+                </p>
+            </div>
+
+            <form id="feedbackForm">
+                <div class="form-group">
+                    <label>カテゴリ <span class="required">*</span></label>
+                    <div class="category-grid">
+                        <div class="category-option">
+                            <input type="radio" id="cat-feature" name="category" value="新機能要望" required>
+                            <label for="cat-feature" class="category-label">🚀 新機能要望</label>
+                        </div>
+                        <div class="category-option">
+                            <input type="radio" id="cat-improvement" name="category" value="改善提案">
+                            <label for="cat-improvement" class="category-label">✨ 改善提案</label>
+                        </div>
+                        <div class="category-option">
+                            <input type="radio" id="cat-bug" name="category" value="不具合報告">
+                            <label for="cat-bug" class="category-label">🐛 不具合報告</label>
+                        </div>
+                        <div class="category-option">
+                            <input type="radio" id="cat-question" name="category" value="質問・相談">
+                            <label for="cat-question" class="category-label">❓ 質問・相談</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="title">タイトル <span class="required">*</span></label>
+                    <input type="text" id="title" placeholder="例: 休暇申請機能の追加希望" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="content">詳細内容 <span class="required">*</span></label>
+                    <textarea id="content" placeholder="できるだけ具体的にご記入ください" required></textarea>
+
+                    <div class="examples">
+                        <h4>記入例：</h4>
+                        <ul>
+                            <li>現在の問題点や不便に感じていること</li>
+                            <li>どのような機能があると便利か</li>
+                            <li>エラーが発生した場合の状況や手順</li>
+                            <li>改善してほしい点の具体的な内容</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="priority">優先度</label>
+                    <select id="priority">
+                        <option value="低">低 - 時間があれば対応してほしい</option>
+                        <option value="中" selected>中 - できれば早めに対応してほしい</option>
+                        <option value="高">高 - 早急に対応してほしい</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="name">お名前（任意）</label>
+                    <input type="text" id="name" placeholder="匿名でも送信できます">
+                </div>
+
+                <div class="form-group">
+                    <label for="employeeId">社員コード（任意）</label>
+                    <input type="text" id="employeeId" placeholder="後日ご連絡が必要な場合にご記入ください">
+                </div>
+
+                <button type="submit" class="btn-submit" id="submitBtn">送信する</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('feedbackForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const submitBtn = document.getElementById('submitBtn');
+            const category = document.querySelector('input[name="category"]:checked');
+            const title = document.getElementById('title').value.trim();
+            const content = document.getElementById('content').value.trim();
+            const priority = document.getElementById('priority').value;
+            const name = document.getElementById('name').value.trim() || '匿名';
+            const employeeId = document.getElementById('employeeId').value.trim();
+
+            if (!category || !title || !content) {
+                showMessage('error', '必須項目を入力してください');
+                return;
+            }
+
+            const gasUrl = localStorage.getItem('attendance_gas_url');
+            if (!gasUrl) {
+                showMessage('error', 'GAS URLが設定されていません。メイン画面の設定から登録してください。');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = '送信中...';
+
+            try {
+                const response = await fetch(gasUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action: 'submitFeedback',
+                        category: category.value,
+                        title: title,
+                        content: content,
+                        priority: priority,
+                        name: name,
+                        employeeId: employeeId
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.result === 'success') {
+                    showMessage('success', 'フィードバックを送信しました。ご協力ありがとうございます！');
+                    document.getElementById('feedbackForm').reset();
+
+                    // 3秒後にメニューに戻る
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 3000);
+                } else {
+                    showMessage('error', '送信に失敗しました: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('error', '通信エラーが発生しました');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '送信する';
+            }
+        });
+
+        function showMessage(type, msg) {
+            const messageArea = document.getElementById('messageArea');
+            messageArea.innerHTML = `<div class="message ${type}">${msg}</div>`;
+
+            // 成功メッセージ以外は5秒後に消す
+            if (type !== 'success') {
+                setTimeout(() => {
+                    messageArea.innerHTML = '';
+                }, 5000);
+            }
+        }
+
+        // 社員コードを自動入力
+        window.onload = function () {
+            const savedEmployeeId = localStorage.getItem('attendance_employee_id');
+            if (savedEmployeeId) {
+                document.getElementById('employeeId').value = savedEmployeeId;
+            }
+        };
+    </script>
+</body>
+
+</html>

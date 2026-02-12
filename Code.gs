@@ -69,6 +69,9 @@ function doPost(e) {
     } else if (action === 'postBoardMessage') { // 掲示板投稿作成
        debugSheet.appendRow([new Date(), 'API実行: postBoardMessage']);
        return postBoardMessage(e);
+    } else if (action === 'submitFeedback') { // フィードバック送信
+       debugSheet.appendRow([new Date(), 'API実行: submitFeedback']);
+       return submitFeedback(e);
     }
     
     // 以下、通常の打刻処理（action が 'in'、'out'、'location' の場合のみ）
@@ -989,6 +992,65 @@ function postBoardMessage(e) {
   }
 }
 
+// ===== フィードバック機能 =====
+
+// フィードバックを送信する関数
+function submitFeedback(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    
+    // デバッグ: 受信データを確認
+    console.log('submitFeedback called');
+    
+    var jsonData = JSON.parse(e.postData.contents);
+    console.log('Parsed jsonData:', JSON.stringify(jsonData));
+    
+    var category = jsonData.category || 'その他';
+    var title = jsonData.title || '';
+    var content = jsonData.content || '';
+    var priority = jsonData.priority || '中';
+    var name = jsonData.name || '匿名';
+    var employeeId = jsonData.employeeId || '';
+    
+    if (!title || !content) {
+      return ContentService.createTextOutput(JSON.stringify({
+        result: 'error',
+        message: 'タイトルと内容は必須です'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    var feedbackSheet = ss.getSheetByName('フィードバック');
+    
+    // シートがない場合は作成
+    if (!feedbackSheet) {
+      console.log('Creating new フィードバック sheet');
+      feedbackSheet = ss.insertSheet('フィードバック');
+      feedbackSheet.appendRow(['日時', 'カテゴリ', 'タイトル', '内容', '優先度', '名前', '社員コード', 'ステータス', '対応メモ']);
+      // ヘッダー行を見やすく設定（任意）
+      feedbackSheet.getRange(1, 1, 1, 9).setFontWeight('bold').setBackground('#f3e5f5');
+    }
+    
+    var now = new Date();
+    // ステータスは初期値「未対応」
+    feedbackSheet.appendRow([now, category, title, content, priority, name, employeeId, '未対応', '']);
+    
+    console.log('Feedback added successfully');
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'success',
+      message: 'フィードバックを送信しました'
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    console.error('Error in submitFeedback:', error);
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'error',
+      message: error.toString(),
+      stack: error.stack || 'No stack trace'
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
 // ===== 月次確認・承認機能 =====
 
 // GETリクエストの処理(HTMLページの表示用)
@@ -1006,6 +1068,18 @@ function doGet(e) {
   } else if (page === 'holiday-settings') {
     return HtmlService.createHtmlOutputFromFile('HolidaySettings')
       .setTitle('年間休日設定')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  } else if (page === 'board') {
+    return HtmlService.createHtmlOutputFromFile('Board')
+      .setTitle('掲示板')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  } else if (page === 'user-guide') {
+    return HtmlService.createHtmlOutputFromFile('UserGuide')
+      .setTitle('使い方・更新情報')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  } else if (page === 'feedback') { // フィードバックのルーティングを追加
+    return HtmlService.createHtmlOutputFromFile('Feedback')
+      .setTitle('要望・フィードバック')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
   
