@@ -63,6 +63,12 @@ function doPost(e) {
     } else if (action === 'getVersionInfo') { // バージョン情報取得
        debugSheet.appendRow([new Date(), 'API実行: getVersionInfo']);
        return getVersionInfo();
+    } else if (action === 'getBoardPosts') { // 掲示板投稿取得
+       debugSheet.appendRow([new Date(), 'API実行: getBoardPosts']);
+       return getBoardPosts();
+    } else if (action === 'postBoardMessage') { // 掲示板投稿作成
+       debugSheet.appendRow([new Date(), 'API実行: postBoardMessage']);
+       return postBoardMessage(e);
     }
     
     // 以下、通常の打刻処理（action が 'in'、'out'、'location' の場合のみ）
@@ -859,6 +865,126 @@ function getVersionInfo() {
     return ContentService.createTextOutput(JSON.stringify({
       result: 'error',
       message: error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// ===== 掲示板機能 =====
+
+// 掲示板の投稿を取得する関数
+function getBoardPosts() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var boardSheet = ss.getSheetByName('掲示板');
+    
+    // シートがない場合は作成
+    if (!boardSheet) {
+      boardSheet = ss.insertSheet('掲示板');
+      boardSheet.appendRow(['日時', '種類', 'タイトル', '内容', '投稿者']);
+      
+      // 初期投稿を追加
+      var now = new Date();
+      boardSheet.appendRow([
+        now,
+        'update',
+        'v3.3 リリースのお知らせ',
+        '日を跨いだ勤務時間計算の修正を行いました。\n\n【主な変更点】\n・日を跨いだ勤務時間が正しく計算されるようになりました\n・自動バージョン通知機能を追加\n・掲示板機能を追加\n\n既存データで勤務時間がマイナス表示されている場合は、再打刻をお願いします。',
+        'システム管理者'
+      ]);
+    }
+    
+    var lastRow = boardSheet.getLastRow();
+    var posts = [];
+    
+    if (lastRow > 1) {
+      var values = boardSheet.getRange(2, 1, lastRow - 1, 5).getValues();
+      
+      // 新しい順にソート
+      for (var i = values.length - 1; i >= 0; i--) {
+        var dateVal = values[i][0];
+        var dateStr = '';
+        
+        if (dateVal instanceof Date) {
+          dateStr = Utilities.formatDate(dateVal, "Asia/Tokyo", "yyyy年MM月dd日 HH:mm");
+        } else {
+          dateStr = String(dateVal);
+        }
+        
+        posts.push({
+          date: dateStr,
+          type: values[i][1],
+          title: values[i][2],
+          content: values[i][3],
+          author: values[i][4]
+        });
+      }
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'success',
+      posts: posts
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'error',
+      message: error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// 掲示板に投稿する関数
+function postBoardMessage(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    
+    // デバッグ: 受信データを確認
+    console.log('postBoardMessage called');
+    console.log('e.postData.contents: ' + e.postData.contents);
+    
+    var jsonData = JSON.parse(e.postData.contents);
+    
+    console.log('Parsed jsonData:', JSON.stringify(jsonData));
+    
+    var type = jsonData.type || 'info';
+    var title = jsonData.title || '';
+    var content = jsonData.content || '';
+    var author = jsonData.author || '匿名';
+    
+    console.log('type:', type, 'title:', title, 'author:', author);
+    
+    if (!title || !content) {
+      return ContentService.createTextOutput(JSON.stringify({
+        result: 'error',
+        message: 'タイトルと内容は必須です'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    var boardSheet = ss.getSheetByName('掲示板');
+    
+    // シートがない場合は作成
+    if (!boardSheet) {
+      console.log('Creating new 掲示板 sheet');
+      boardSheet = ss.insertSheet('掲示板');
+      boardSheet.appendRow(['日時', '種類', 'タイトル', '内容', '投稿者']);
+    }
+    
+    var now = new Date();
+    boardSheet.appendRow([now, type, title, content, author]);
+    
+    console.log('Post added successfully');
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'success',
+      message: '投稿しました'
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    console.error('Error in postBoardMessage:', error);
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'error',
+      message: error.toString(),
+      stack: error.stack || 'No stack trace'
     })).setMimeType(ContentService.MimeType.JSON);
   }
 }
