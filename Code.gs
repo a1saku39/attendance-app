@@ -15,8 +15,8 @@ function doPost(e) {
 
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     
-    // バージョン確認用ログ (v3.2 DebugDisabled)
-    debugSheet.appendRow([new Date(), '[INFO] doPost実行 (v3.2 DebugDisabled)']);
+    // バージョン確認用ログ (v3.3 - 日跨ぎ勤務時間計算修正)
+    debugSheet.appendRow([new Date(), '[INFO] doPost実行 (v3.3 - 日跨ぎ勤務時間計算修正)']);
     debugSheet.appendRow([new Date(), '受信データ: ' + e.postData.contents]);
 
     // APIエンドポイントの振り分け
@@ -60,6 +60,9 @@ function doPost(e) {
     } else if (action === 'saveHolidaySettings') { // Added handler
        debugSheet.appendRow([new Date(), 'API実行: saveHolidaySettings']);
        return saveHolidaySettings(e);
+    } else if (action === 'getVersionInfo') { // バージョン情報取得
+       debugSheet.appendRow([new Date(), 'API実行: getVersionInfo']);
+       return getVersionInfo();
     }
     
     // 以下、通常の打刻処理（action が 'in'、'out'、'location' の場合のみ）
@@ -348,7 +351,7 @@ function updateDailyAttendance(e) {
         logSheet.getRange(foundRow, 10).setValue(remarks); // J:備考
 
         // 勤務時間(I列=9)の計算式再設定
-        logSheet.getRange(foundRow, 9).setFormula('=IF(AND(F' + foundRow + '<>"", H' + foundRow + '<>""), TEXT(H' + foundRow + '-F' + foundRow + ', "[h]:mm"), "")');
+        logSheet.getRange(foundRow, 9).setFormula('=IF(AND(F' + foundRow + '<>"", H' + foundRow + '<>""), TEXT(H' + foundRow + '-F' + foundRow + ' + IF(H' + foundRow + '<F' + foundRow + ', 1, 0), "[h]:mm"), "")');
         
         if(debugSheet) debugSheet.appendRow([new Date(), '既存行を更新しました: ' + foundRow + '行目']);
         
@@ -378,7 +381,7 @@ function updateDailyAttendance(e) {
         logSheet.appendRow(newRowData);
         var newRowNum = logSheet.getLastRow();
         // I列=9.  INPUT: F, H
-        logSheet.getRange(newRowNum, 9).setFormula('=IF(AND(F' + newRowNum + '<>"", H' + newRowNum + '<>""), TEXT(H' + newRowNum + '-F' + newRowNum + ', "[h]:mm"), "")');
+        logSheet.getRange(newRowNum, 9).setFormula('=IF(AND(F' + newRowNum + '<>"", H' + newRowNum + '<>""), TEXT(H' + newRowNum + '-F' + newRowNum + ' + IF(H' + newRowNum + '<F' + newRowNum + ', 1, 0), "[h]:mm"), "")');
 
         if(debugSheet) debugSheet.appendRow([new Date(), '新規行を追加しました: ' + newRowNum + '行目']);
     }
@@ -484,13 +487,13 @@ function updateOrAppendRow(sheet, data) {
       }
       
       // I列(9): 勤務時間.  F(6), H(8)
-      sheet.getRange(foundRow, 9).setFormula('=IF(AND(F' + foundRow + '<>"", H' + foundRow + '<>""), TEXT(H' + foundRow + '-F' + foundRow + ', "[h]:mm"), "")');
+      sheet.getRange(foundRow, 9).setFormula('=IF(AND(F' + foundRow + '<>"", H' + foundRow + '<>""), TEXT(H' + foundRow + '-F' + foundRow + ' + IF(H' + foundRow + '<F' + foundRow + ', 1, 0), "[h]:mm"), "")');
       debugSheet.appendRow([new Date(), '出勤時刻を記録: ' + data.time]);
     } else if (data.action === 'out') {
       sheet.getRange(foundRow, 7).setValue('退勤'); // G:種別
       sheet.getRange(foundRow, 8).setValue(data.time); // H:退勤時刻
       // I列(9): 勤務時間
-      sheet.getRange(foundRow, 9).setFormula('=IF(AND(F' + foundRow + '<>"", H' + foundRow + '<>""), TEXT(H' + foundRow + '-F' + foundRow + ', "[h]:mm"), "")');
+      sheet.getRange(foundRow, 9).setFormula('=IF(AND(F' + foundRow + '<>"", H' + foundRow + '<>""), TEXT(H' + foundRow + '-F' + foundRow + ' + IF(H' + foundRow + '<F' + foundRow + ', 1, 0), "[h]:mm"), "")');
       
       // 備考(J列=10)
       if (data.remarks) {
@@ -584,7 +587,7 @@ function updateOrAppendRow(sheet, data) {
     
     var newRow = sheet.getLastRow();
     // I列(9)数式
-    sheet.getRange(newRow, 9).setFormula('=IF(AND(F' + newRow + '<>"", H' + newRow + '<>""), TEXT(H' + newRow + '-F' + newRow + ', "[h]:mm"), "")');
+    sheet.getRange(newRow, 9).setFormula('=IF(AND(F' + newRow + '<>"", H' + newRow + '<>""), TEXT(H' + newRow + '-F' + newRow + ' + IF(H' + newRow + '<F' + newRow + ', 1, 0), "[h]:mm"), "")');
     foundRow = newRow; // For coloring
     debugSheet.appendRow([new Date(), '新規行を追加しました: ' + newRow + '行目']);
   }
@@ -835,6 +838,31 @@ function saveHolidaySettings(e) {
   }
 }
 
+// バージョン情報を取得する関数
+function getVersionInfo() {
+  try {
+    var versionInfo = {
+      version: 'v3.3',
+      releaseDate: '2026-02-12',
+      updateNotes: [
+        '日を跨いだ勤務時間計算の修正（例：08:00出勤、翌00:40退勤 → 正しく16:40と表示）',
+        '既存データは再打刻または手動修正が必要です'
+      ]
+    };
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'success',
+      versionInfo: versionInfo
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'error',
+      message: error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
 // ===== 月次確認・承認機能 =====
 
 // GETリクエストの処理(HTMLページの表示用)
@@ -975,9 +1003,17 @@ function getApprovalStatus(employeeId, yearMonth) {
     var rowBoss = values[i][4];
     var rowBossDate = values[i][5];
     
+    // 年月を文字列に正規化（日付オブジェクトの場合はYYYY-MM形式に変換）
+    var normalizedYearMonth = '';
+    if (rowYearMonth instanceof Date) {
+      normalizedYearMonth = Utilities.formatDate(rowYearMonth, "Asia/Tokyo", "yyyy-MM");
+    } else {
+      normalizedYearMonth = String(rowYearMonth);
+    }
+    
     console.log('行' + (i+2) + '確認 - 年月:', rowYearMonth, '社員ID:', rowEmployeeId, '本人:', rowSelf, '承認者:', rowBoss);
     
-    if (String(rowEmployeeId) === String(employeeId) && rowYearMonth === yearMonth) {
+    if (String(rowEmployeeId) === String(employeeId) && normalizedYearMonth === yearMonth) {
       console.log('✓ マッチング成功! - 社員ID:', employeeId, '年月:', yearMonth);
       var result = {
         self: rowSelf ? { name: rowSelf, date: rowSelfDate } : null,
@@ -1094,7 +1130,18 @@ function recordApproval(e) {
     if (lastRow > 1) {
       var values = approvalSheet.getRange(2, 1, lastRow - 1, 2).getValues();
       for (var i = 0; i < values.length; i++) {
-        if (values[i][0] === yearMonth && String(values[i][1]) === String(targetEmployeeId)) {
+        var rowYearMonth = values[i][0];
+        var rowEmployeeId = String(values[i][1]);
+        
+        // 年月を文字列に正規化（日付オブジェクトの場合はYYYY-MM形式に変換）
+        var normalizedRowYearMonth = '';
+        if (rowYearMonth instanceof Date) {
+          normalizedRowYearMonth = Utilities.formatDate(rowYearMonth, "Asia/Tokyo", "yyyy-MM");
+        } else {
+          normalizedRowYearMonth = String(rowYearMonth);
+        }
+        
+        if (normalizedRowYearMonth === yearMonth && rowEmployeeId === String(targetEmployeeId)) {
           foundRow = i + 2;
           break;
         }
@@ -1942,7 +1989,15 @@ function getApproverDashboard(e) {
         var dataSelf = approvalData[k][2];
         var dataBoss = approvalData[k][4];
         
-        if (dataYearMonth === yearMonth && dataEmployeeId === String(sub.id)) {
+        // 年月を文字列に正規化（日付オブジェクトの場合はYYYY-MM形式に変換）
+        var normalizedDataYearMonth = '';
+        if (dataYearMonth instanceof Date) {
+          normalizedDataYearMonth = Utilities.formatDate(dataYearMonth, "Asia/Tokyo", "yyyy-MM");
+        } else {
+          normalizedDataYearMonth = String(dataYearMonth);
+        }
+        
+        if (normalizedDataYearMonth === yearMonth && dataEmployeeId === String(sub.id)) {
           if (dataSelf) status.self = true;
           if (dataBoss) status.boss = true;
           foundApproval = true;
@@ -1978,4 +2033,36 @@ function getApproverDashboard(e) {
       message: error.toString()
     })).setMimeType(ContentService.MimeType.JSON);
   }
+}
+function testApprovalStatus() {
+  Logger.log("=== テスト開始 ===");
+  
+  // スプレッドシートとシートの確認
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var approvalSheet = ss.getSheetByName('月次承認記録_個人');
+  
+  if (!approvalSheet) {
+    Logger.log("エラー: 月次承認記録_個人シートが見つかりません");
+    return;
+  }
+  
+  Logger.log("シート名: " + approvalSheet.getName());
+  Logger.log("最終行: " + approvalSheet.getLastRow());
+  
+  // データを読み取り
+  if (approvalSheet.getLastRow() > 1) {
+    var values = approvalSheet.getRange(2, 1, approvalSheet.getLastRow() - 1, 6).getValues();
+    Logger.log("データ行数: " + values.length);
+    
+    // 全データを表示
+    for (var i = 0; i < values.length; i++) {
+      Logger.log("行" + (i+2) + ": 年月=" + values[i][0] + " (型:" + typeof values[i][0] + "), 社員ID=" + values[i][1] + " (型:" + typeof values[i][1] + "), 本人=" + values[i][2] + ", 承認者=" + values[i][4]);
+    }
+  }
+  
+  // getApprovalStatus関数を実行
+  Logger.log("\n=== getApprovalStatus実行 ===");
+  var result = getApprovalStatus("1359", "2025-12");
+  Logger.log("結果: " + JSON.stringify(result));
+  Logger.log("=== テスト終了 ===");
 }

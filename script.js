@@ -39,6 +39,9 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(updateTime, 1000);
     updateTime();
 
+    // バージョンチェック
+    checkVersion();
+
     // 設定保存
     saveSettingsBtn.addEventListener('click', () => {
         const url = gasUrlInput.value.trim();
@@ -464,3 +467,72 @@ document.addEventListener('DOMContentLoaded', function () {
         overlay.addEventListener('click', toggleMenu);
     }
 });
+
+// バージョンチェック機能
+async function checkVersion() {
+    const gasUrl = localStorage.getItem('attendance_gas_url');
+    if (!gasUrl) return; // URLが設定されていない場合はスキップ
+
+    const currentVersion = localStorage.getItem('attendance_app_version') || 'v3.2';
+
+    try {
+        const response = await fetch(gasUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'getVersionInfo' })
+        });
+
+        const data = await response.json();
+
+        if (data.result === 'success' && data.versionInfo) {
+            const serverVersion = data.versionInfo.version;
+
+            // 新しいバージョンがある場合
+            if (serverVersion !== currentVersion) {
+                showVersionUpdateNotification(data.versionInfo);
+                // バージョンを保存
+                localStorage.setItem('attendance_app_version', serverVersion);
+            }
+        }
+    } catch (error) {
+        console.log('バージョンチェックエラー:', error);
+        // エラーは無視（ユーザーに影響を与えない）
+    }
+}
+
+function showVersionUpdateNotification(versionInfo) {
+    const statusMessage = document.getElementById('status-message');
+    if (!statusMessage) return;
+
+    let notesHtml = '';
+    if (versionInfo.updateNotes && versionInfo.updateNotes.length > 0) {
+        notesHtml = '<ul style="text-align: left; margin: 10px 0; padding-left: 20px;">';
+        versionInfo.updateNotes.forEach(note => {
+            notesHtml += `<li>${note}</li>`;
+        });
+        notesHtml += '</ul>';
+    }
+
+    const message = `
+        <div style="padding: 15px; background: #e3f2fd; border: 2px solid #2196f3; border-radius: 8px; margin-bottom: 15px;">
+            <div style="font-weight: bold; color: #1976d2; margin-bottom: 8px;">
+                🎉 アプリが更新されました！ ${versionInfo.version}
+            </div>
+            <div style="font-size: 13px; color: #555;">
+                リリース日: ${versionInfo.releaseDate}
+            </div>
+            ${notesHtml}
+            <button onclick="this.parentElement.remove()" 
+                    style="margin-top: 10px; padding: 6px 15px; background: #2196f3; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                閉じる
+            </button>
+        </div>
+    `;
+
+    // メッセージエリアの上に通知を挿入
+    const container = statusMessage.parentElement;
+    const notification = document.createElement('div');
+    notification.innerHTML = message;
+    container.insertBefore(notification, statusMessage);
+}
+
