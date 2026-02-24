@@ -72,6 +72,18 @@ function doPost(e) {
     } else if (action === 'submitFeedback') { // フィードバック送信
        debugSheet.appendRow([new Date(), 'API実行: submitFeedback']);
        return submitFeedback(e);
+    } else if (action === 'getEmployeeList') { // 社員一覧取得
+       debugSheet.appendRow([new Date(), 'API実行: getEmployeeList']);
+       return getEmployeeList();
+    } else if (action === 'sendMessage') { // メッセージ送信
+       debugSheet.appendRow([new Date(), 'API実行: sendMessage']);
+       return sendMessage(e);
+    } else if (action === 'getMessages') { // メッセージ取得
+       debugSheet.appendRow([new Date(), 'API実行: getMessages']);
+       return getMessages(e);
+    } else if (action === 'markMessageRead') { // メッセージ既読
+       debugSheet.appendRow([new Date(), 'API実行: markMessageRead']);
+       return markMessageRead(e);
     }
     
     // 以下、通常の打刻処理（action が 'in'、'out'、'location' の場合のみ）
@@ -1051,6 +1063,213 @@ function submitFeedback(e) {
   }
 }
 
+// ===== 個人メッセージ機能 =====
+
+// 社員一覧を取得する関数
+function getEmployeeList() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var masterSheet = ss.getSheetByName('社員マスタ');
+    
+    if (!masterSheet) {
+      return ContentService.createTextOutput(JSON.stringify({
+        result: 'error',
+        message: '社員マスタが見つかりません'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    var lastRow = masterSheet.getLastRow();
+    var employees = [];
+    
+    if (lastRow > 1) {
+      var values = masterSheet.getRange(2, 1, lastRow - 1, 3).getValues();
+      for (var i = 0; i < values.length; i++) {
+        if (values[i][0] && values[i][1]) {
+          employees.push({
+            code: String(values[i][0]),
+            name: String(values[i][1]),
+            department: String(values[i][2] || '未設定')
+          });
+        }
+      }
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'success',
+      employees: employees
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'error',
+      message: error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// メッセージを送信する関数
+function sendMessage(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var jsonData = JSON.parse(e.postData.contents);
+    
+    var senderCode = jsonData.senderCode || '';
+    var recipientCode = jsonData.recipientCode || '';
+    var subject = jsonData.subject || '';
+    var body = jsonData.body || '';
+    
+    if (!senderCode || !recipientCode || !subject || !body) {
+      return ContentService.createTextOutput(JSON.stringify({
+        result: 'error',
+        message: 'すべての項目を入力してください'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // 送信者名と受信者名を社員マスタから取得
+    var masterSheet = ss.getSheetByName('社員マスタ');
+    var senderName = '不明';
+    var recipientName = '不明';
+    
+    if (masterSheet && masterSheet.getLastRow() > 1) {
+      var masterValues = masterSheet.getRange(2, 1, masterSheet.getLastRow() - 1, 2).getValues();
+      for (var i = 0; i < masterValues.length; i++) {
+        if (String(masterValues[i][0]) === String(senderCode)) {
+          senderName = masterValues[i][1];
+        }
+        if (String(masterValues[i][0]) === String(recipientCode)) {
+          recipientName = masterValues[i][1];
+        }
+      }
+    }
+    
+    var msgSheet = ss.getSheetByName('メッセージ');
+    
+    // シートがない場合は作成
+    if (!msgSheet) {
+      msgSheet = ss.insertSheet('メッセージ');
+      msgSheet.appendRow(['日時', '送信者コード', '送信者名', '受信者コード', '受信者名', '件名', '本文', 'ステータス']);
+      msgSheet.getRange(1, 1, 1, 8).setFontWeight('bold').setBackground('#e8eaf6');
+    }
+    
+    var now = new Date();
+    msgSheet.appendRow([now, senderCode, senderName, recipientCode, recipientName, subject, body, '未読']);
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'success',
+      message: 'メッセージを送信しました'
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'error',
+      message: error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// メッセージを取得する関数（受信・送信両方）
+function getMessages(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var jsonData = JSON.parse(e.postData.contents);
+    var employeeCode = String(jsonData.employeeCode || '');
+    
+    if (!employeeCode) {
+      return ContentService.createTextOutput(JSON.stringify({
+        result: 'error',
+        message: '社員コードが必要です'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    var msgSheet = ss.getSheetByName('メッセージ');
+    var received = [];
+    var sent = [];
+    
+    if (msgSheet && msgSheet.getLastRow() > 1) {
+      var values = msgSheet.getRange(2, 1, msgSheet.getLastRow() - 1, 8).getValues();
+      
+      for (var i = values.length - 1; i >= 0; i--) {
+        var dateVal = values[i][0];
+        var dateStr = '';
+        if (dateVal instanceof Date) {
+          dateStr = Utilities.formatDate(dateVal, "Asia/Tokyo", "yyyy/MM/dd HH:mm");
+        } else {
+          dateStr = String(dateVal);
+        }
+        
+        var row = {
+          date: dateStr,
+          senderCode: String(values[i][1]),
+          senderName: String(values[i][2]),
+          recipientCode: String(values[i][3]),
+          recipientName: String(values[i][4]),
+          subject: String(values[i][5]),
+          body: String(values[i][6]),
+          status: String(values[i][7]),
+          rowIndex: i + 2 // シートの行番号（ヘッダー+1）
+        };
+        
+        // 自分宛てのメッセージ（受信）
+        if (String(values[i][3]) === employeeCode) {
+          received.push(row);
+        }
+        
+        // 自分が送信したメッセージ
+        if (String(values[i][1]) === employeeCode) {
+          sent.push(row);
+        }
+      }
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'success',
+      received: received,
+      sent: sent
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'error',
+      message: error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// メッセージを既読にする関数
+function markMessageRead(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var jsonData = JSON.parse(e.postData.contents);
+    var rowIndex = jsonData.rowIndex;
+    
+    if (!rowIndex) {
+      return ContentService.createTextOutput(JSON.stringify({
+        result: 'error',
+        message: '行番号が必要です'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    var msgSheet = ss.getSheetByName('メッセージ');
+    if (msgSheet) {
+      var currentStatus = msgSheet.getRange(rowIndex, 8).getValue();
+      if (currentStatus === '未読') {
+        msgSheet.getRange(rowIndex, 8).setValue('既読');
+      }
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'success',
+      message: '既読にしました'
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'error',
+      message: error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
 // ===== 月次確認・承認機能 =====
 
 // GETリクエストの処理(HTMLページの表示用)
@@ -1080,6 +1299,10 @@ function doGet(e) {
   } else if (page === 'feedback') { // フィードバックのルーティングを追加
     return HtmlService.createHtmlOutputFromFile('Feedback')
       .setTitle('要望・フィードバック')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  } else if (page === 'message') { // 個人メッセージのルーティング
+    return HtmlService.createHtmlOutputFromFile('Message')
+      .setTitle('個人メッセージ')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
   
