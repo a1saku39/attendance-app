@@ -2410,21 +2410,68 @@ function sendHolidayWorkNotificationEmail(to, name, dateStr, holidayType, clockI
              '■ ' + timeInfo + '\n' +
              '━━━━━━━━━━━━━━━━━━━━━━\n\n' +
              '休日に勤務された場合は、\n' +
-             '「夜間・休日作業報告書」の提出が必要です。\n\n' +
+             '「夜間・休日作業報告書」の提出が必要です。\n' +
+             '添付の報告書に記入の上、提出してください。\n\n' +
              '速やかにご提出くださいますようお願いいたします。\n\n' +
              '━━━━━━━━━━━━━━━━━━━━━━\n' +
              '※ このメールはシステムより自動送信されています。\n' +
              '※ ご不明点がございましたら管理部までお問い合わせください。';
   
   try {
-    MailApp.sendEmail({
+    // Googleドライブから報告書ファイルを取得
+    var attachment = getHolidayReportFile();
+    
+    var emailOptions = {
       to: to,
       subject: subject,
       body: body
-    });
+    };
+    
+    // ファイルが見つかった場合は添付
+    if (attachment) {
+      emailOptions.attachments = [attachment];
+      console.log('報告書ファイルを添付します');
+    } else {
+      console.log('⚠️ 報告書ファイルが見つからないため、添付なしで送信します');
+    }
+    
+    MailApp.sendEmail(emailOptions);
     console.log('休日出勤通知メール送信成功: ' + name + ' (' + to + ') ' + dateStr);
   } catch (e) {
     console.log('休日出勤通知メール送信失敗: ' + name + ' - ' + e.toString());
+  }
+}
+
+// Googleドライブの「業務改善用」フォルダ内の「夜間休日報告書.xlsx」を取得するヘルパー関数
+function getHolidayReportFile() {
+  try {
+    // 方法1: フォルダ名で検索してファイルを取得
+    var folders = DriveApp.getFoldersByName('業務改善用');
+    
+    if (folders.hasNext()) {
+      var folder = folders.next();
+      var files = folder.getFilesByName('夜間休日報告書.xlsx');
+      
+      if (files.hasNext()) {
+        var file = files.next();
+        console.log('報告書ファイル発見: ' + file.getName() + ' (ID: ' + file.getId() + ')');
+        return file.getBlob();
+      }
+    }
+    
+    // 方法2: フォルダが見つからない場合、ファイル名で直接検索
+    var allFiles = DriveApp.getFilesByName('夜間休日報告書.xlsx');
+    if (allFiles.hasNext()) {
+      var file = allFiles.next();
+      console.log('報告書ファイル発見（フォルダ外検索）: ' + file.getName() + ' (ID: ' + file.getId() + ')');
+      return file.getBlob();
+    }
+    
+    console.log('⚠️ 「夜間休日報告書.xlsx」がGoogleドライブに見つかりません');
+    return null;
+  } catch (e) {
+    console.log('報告書ファイル取得エラー: ' + e.toString());
+    return null;
   }
 }
 
