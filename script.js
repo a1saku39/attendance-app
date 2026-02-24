@@ -550,11 +550,21 @@ function showVersionUpdateNotification(versionInfo) {
         </div>
     `;
 
-    // メッセージエリアの上に通知を挿入
-    const container = statusMessage.parentElement;
+    // アプリのコンテナ（.container）内に通知を挿入して、スマホで右側にはみ出さないようにする
+    const appContainer = document.querySelector('.container');
+    const mainArea = document.querySelector('main');
+
     const notification = document.createElement('div');
     notification.innerHTML = message;
-    container.insertBefore(notification, statusMessage);
+
+    if (appContainer && mainArea) {
+        appContainer.insertBefore(notification, mainArea);
+    } else if (appContainer) {
+        appContainer.insertBefore(notification, appContainer.firstChild);
+    } else {
+        const container = statusMessage.parentElement;
+        container.insertBefore(notification, statusMessage);
+    }
 }
 
 // 未読メッセージチェック機能
