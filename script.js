@@ -480,17 +480,25 @@ async function checkVersion() {
 
     const currentVersion = localStorage.getItem('attendance_app_version') || 'v3.2';
 
+    // まずlocalStorageのバージョンを即表示
+    updateMenuVersion(currentVersion);
+
     try {
         const response = await fetch(gasUrl, {
             method: 'POST',
+            redirect: 'follow',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify({ action: 'getVersionInfo' })
         });
 
-        const data = await response.json();
+        const text = await response.text();
+        const data = JSON.parse(text);
 
         if (data.result === 'success' && data.versionInfo) {
             const serverVersion = data.versionInfo.version;
+
+            // メニューのバージョン表示を更新
+            updateMenuVersion(serverVersion);
 
             // 新しいバージョンがある場合
             if (serverVersion !== currentVersion) {
@@ -502,6 +510,14 @@ async function checkVersion() {
     } catch (error) {
         console.log('バージョンチェックエラー:', error);
         // エラーは無視（ユーザーに影響を与えない）
+    }
+}
+
+// メニューのバージョン表示を更新
+function updateMenuVersion(version) {
+    const versionEl = document.getElementById('menuVersion');
+    if (versionEl && version) {
+        versionEl.textContent = version;
     }
 }
 
