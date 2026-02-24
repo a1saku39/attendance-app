@@ -2269,6 +2269,165 @@ function sendReminderEmail(to, name, type) {
   }
 }
 
+// ===== 夜間・休日作業報告書 通知機能 =====
+
+// 休日（会社設定の休日・祝日・土日）に出勤・退勤があった社員にメール通知する関数
+// Apps Scriptのトリガーで毎日21時頃に実行することを想定
+function checkHolidayWorkAndNotify() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var masterSheet = ss.getSheetByName('社員マスタ');
+  
+  if (!masterSheet) {
+    console.log('社員マスタが見つかりません');
+    return;
+  }
+  
+  var now = new Date();
+  var todayStr = Utilities.formatDate(now, "Asia/Tokyo", "yyyy/MM/dd");
+  var todayForHoliday = Utilities.formatDate(now, "Asia/Tokyo", "yyyy-MM-dd");
+  var yearMonth = Utilities.formatDate(now, "Asia/Tokyo", "yyyy-MM");
+  
+  console.log('休日出勤チェック開始: ' + todayStr);
+  
+  // 1. 今日が休日かどうかをチェック
+  var holidays = getAllHolidaysMap(yearMonth);
+  
+  if (!isHoliday(now, holidays)) {
+    console.log('本日は平日のためスキップします');
+    return;
+  }
+  
+  // 休日の種類を取得
+  var holidayType = '休日';
+  if (holidays[todayForHoliday]) {
+    if (holidays[todayForHoliday] === 'holiday') {
+      holidayType = '祝日';
+    } else if (holidays[todayForHoliday] === 'company') {
+      holidayType = '会社休日';
+    }
+  }
+  var dayOfWeek = now.getDay();
+  if (dayOfWeek === 0) holidayType = '日曜日';
+  if (dayOfWeek === 6) holidayType = '土曜日';
+  
+  console.log('本日は' + holidayType + 'です。出勤者を確認します。');
+  
+  // 2. 社員マスタ取得
+  // A:コード, B:氏名, C:部署, D:承認対象部署, E:第1承認者, F:第2承認者, G:メールアドレス
+  var lastRow = masterSheet.getLastRow();
+  if (lastRow <= 1) return;
+  
+  var employees = masterSheet.getRange(2, 1, lastRow - 1, 7).getValues();
+  var notifiedCount = 0;
+  
+  // 3. 各社員の打刻状況をチェック
+  employees.forEach(function(emp) {
+    var empId = emp[0];
+    var empName = emp[1];
+    var department = emp[2];
+    var email = emp[6]; // G列: メールアドレス
+    
+    // メールアドレスがない、または部署未設定の場合はスキップ
+    if (!email || !department || department === '未設定') return;
+    
+    var logSheetName = '打刻_' + department;
+    var logSheet = ss.getSheetByName(logSheetName);
+    var hasClockedIn = false;
+    var clockInTime = '';
+    var clockOutTime = '';
+    
+    if (logSheet) {
+      ensureDayOfWeekColumn(logSheet);
+      
+      var logLastRow = logSheet.getLastRow();
+      if (logLastRow > 1) {
+        var startRow = Math.max(2, logLastRow - 50);
+        var numRows = logLastRow - startRow + 1;
+        var logs = logSheet.getRange(startRow, 1, numRows, 8).getValues();
+        
+        for (var i = logs.length - 1; i >= 0; i--) {
+          var logDate = logs[i][0]; // A列
+          var logId = logs[i][2];   // C列 (社員コード)
+          
+          var logDateStr = '';
+          if (logDate instanceof Date) {
+            logDateStr = Utilities.formatDate(logDate, "Asia/Tokyo", "yyyy/MM/dd");
+          } else {
+            logDateStr = String(logDate);
+          }
+          
+          if (logDateStr === todayStr && String(logId) === String(empId)) {
+            if (logs[i][5]) {
+              hasClockedIn = true;
+              // 出勤時刻を取得
+              var inVal = logs[i][5];
+              if (inVal instanceof Date) {
+                clockInTime = Utilities.formatDate(inVal, "Asia/Tokyo", "HH:mm");
+              } else {
+                clockInTime = String(inVal);
+              }
+            }
+            if (logs[i][7]) {
+              var outVal = logs[i][7];
+              if (outVal instanceof Date) {
+                clockOutTime = Utilities.formatDate(outVal, "Asia/Tokyo", "HH:mm");
+              } else {
+                clockOutTime = String(outVal);
+              }
+            }
+            break;
+          }
+        }
+      }
+    }
+    
+    // 4. 休日に出勤があった場合にメール送信
+    if (hasClockedIn) {
+      sendHolidayWorkNotificationEmail(email, empName, todayStr, holidayType, clockInTime, clockOutTime);
+      notifiedCount++;
+    }
+  });
+  
+  console.log('休日出勤通知完了: ' + notifiedCount + '名に通知しました');
+}
+
+// 夜間・休日作業報告書提出促進メール送信関数
+function sendHolidayWorkNotificationEmail(to, name, dateStr, holidayType, clockInTime, clockOutTime) {
+  var timeInfo = '出勤時刻: ' + clockInTime;
+  if (clockOutTime) {
+    timeInfo += '\n退勤時刻: ' + clockOutTime;
+  } else {
+    timeInfo += '\n退勤時刻: 未打刻';
+  }
+  
+  var subject = '【要対応】夜間・休日作業報告書の提出について（' + dateStr + '）';
+  var body = name + ' さん\n\n' +
+             'お疲れ様です。\n\n' +
+             '本日（' + dateStr + '）は「' + holidayType + '」ですが、\n' +
+             '以下の出勤記録が確認されました。\n\n' +
+             '━━━━━━━━━━━━━━━━━━━━━━\n' +
+             '■ 勤務日: ' + dateStr + '（' + holidayType + '）\n' +
+             '■ ' + timeInfo + '\n' +
+             '━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+             '休日に勤務された場合は、\n' +
+             '「夜間・休日作業報告書」の提出が必要です。\n\n' +
+             '速やかにご提出くださいますようお願いいたします。\n\n' +
+             '━━━━━━━━━━━━━━━━━━━━━━\n' +
+             '※ このメールはシステムより自動送信されています。\n' +
+             '※ ご不明点がございましたら管理部までお問い合わせください。';
+  
+  try {
+    MailApp.sendEmail({
+      to: to,
+      subject: subject,
+      body: body
+    });
+    console.log('休日出勤通知メール送信成功: ' + name + ' (' + to + ') ' + dateStr);
+  } catch (e) {
+    console.log('休日出勤通知メール送信失敗: ' + name + ' - ' + e.toString());
+  }
+}
+
 // 承認者ダッシュボード用データ取得
 function getApproverDashboard(e) {
   try {
