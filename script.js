@@ -466,6 +466,11 @@ document.addEventListener('DOMContentLoaded', function () {
     if (overlay) {
         overlay.addEventListener('click', toggleMenu);
     }
+
+    // 未読メッセージチェック
+    checkUnreadMessages();
+    // 3分ごとに未読チェック
+    setInterval(checkUnreadMessages, 3 * 60 * 1000);
 });
 
 // バージョンチェック機能
@@ -536,3 +541,49 @@ function showVersionUpdateNotification(versionInfo) {
     container.insertBefore(notification, statusMessage);
 }
 
+// 未読メッセージチェック機能
+async function checkUnreadMessages() {
+    const gasUrl = localStorage.getItem('attendance_gas_url');
+    const employeeCode = localStorage.getItem('attendance_employee_id');
+
+    if (!gasUrl || !employeeCode) return;
+
+    try {
+        const response = await fetch(gasUrl, {
+            method: 'POST',
+            redirect: 'follow',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({
+                action: 'getMessages',
+                employeeCode: employeeCode
+            })
+        });
+
+        const text = await response.text();
+        const data = JSON.parse(text);
+
+        if (data.result === 'success') {
+            const received = data.received || [];
+            const unreadCount = received.filter(function (m) { return m.status === '未読'; }).length;
+
+            // メニュー内のバッジを更新
+            const badge = document.getElementById('msgUnreadBadge');
+            if (badge) {
+                if (unreadCount > 0) {
+                    badge.textContent = unreadCount;
+                    badge.style.display = 'inline-block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+
+            // メニューボタンのドットを更新
+            const dot = document.getElementById('menuDot');
+            if (dot) {
+                dot.style.display = unreadCount > 0 ? 'block' : 'none';
+            }
+        }
+    } catch (error) {
+        console.error('未読チェックエラー:', error);
+    }
+}
