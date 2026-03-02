@@ -1109,6 +1109,7 @@ function getEmployeeList() {
 }
 
 // メッセージを送信する関数（個人・グループ・全員）
+// メッセージを送信する関数（個人・グループ・全員）
 function sendMessage(e) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -1116,8 +1117,8 @@ function sendMessage(e) {
     var jsonData = JSON.parse(contents);
     
     var senderCode = String(jsonData.senderCode || '').trim();
-    var sendType = jsonData.sendType || 'individual'; // individual, group, all
-    var recipientCode = String(jsonData.recipientCode || '').trim(); // typeに応じて社員コード or 部署名
+    var sendType = jsonData.sendType || 'individual'; 
+    var recipientCode = String(jsonData.recipientCode || '').trim(); 
     var subject = jsonData.subject || '';
     var body = jsonData.body || '';
     
@@ -1131,45 +1132,44 @@ function sendMessage(e) {
     var masterSheet = ss.getSheetByName('社員マスタ');
     if (!masterSheet) throw new Error('社員マスタが見つかりません');
     
-    var masterRows = masterSheet.getLastRow();
-    if (masterRows <= 1) throw new Error('社員データが登録されていません');
+    // 全社員データを取得
+    var masterValues = masterSheet.getDataRange().getValues();
+    if (masterValues.length <= 1) throw new Error('社員データが登録されていません');
     
-    // 全社員データを取得 [コード, 氏名, 部署]
-    var masterValues = masterSheet.getRange(2, 1, masterRows - 1, 3).getValues();
+    // ヘッダーを除いたデータ
+    var dataRows = masterValues.slice(1);
     
-    // 1. まず送信者名を特定（ループ前に確定させる）
-    var senderName = '不明';
-    for (var i = 0; i < masterValues.length; i++) {
-        if (String(masterValues[i][0]).trim() === senderCode) {
-            senderName = String(masterValues[i][1] || '不明').trim();
+    // 1. 送信者名を特定
+    var senderName = '不明(' + senderCode + ')';
+    for (var i = 0; i < dataRows.length; i++) {
+        if (String(dataRows[i][0]).trim() === senderCode) {
+            senderName = String(dataRows[i][1] || '').trim() || ('社員' + senderCode);
             break;
         }
     }
     
-    var recipients = []; // {code: string, name: string} の配列
+    var recipients = []; 
     
     // 2. 送信先リストを作成
-    for (var i = 0; i < masterValues.length; i++) {
-      var rowCode = String(masterValues[i][0]).trim();
-      var rowName = String(masterValues[i][1] || '不明').trim();
-      var rowDept = String(masterValues[i][2] || '未設定').trim();
+    for (var i = 0; i < dataRows.length; i++) {
+      var rowCode = String(dataRows[i][0]).trim();
+      var rowName = String(dataRows[i][1] || '').trim() || ('社員' + rowCode);
+      var rowDept = String(dataRows[i][2] || '未設定').trim();
       
-      if (!rowCode) continue; // 空行スキップ
+      if (!rowCode) continue; 
+      if (rowCode === senderCode) continue; // 自分へは送らない
       
-      // 自分への送信はスキップ
-      if (rowCode === senderCode) continue;
-      
-      // 送信先判定
+      var shouldSend = false;
       if (sendType === 'all') {
-        recipients.push({ code: rowCode, name: rowName });
+        shouldSend = true;
       } else if (sendType === 'group') {
-        if (rowDept === recipientCode) {
-          recipients.push({ code: rowCode, name: rowName });
-        }
+        if (rowDept === recipientCode) shouldSend = true;
       } else if (sendType === 'individual') {
-        if (rowCode === recipientCode) {
-          recipients.push({ code: rowCode, name: rowName });
-        }
+        if (rowCode === recipientCode) shouldSend = true;
+      }
+      
+      if (shouldSend) {
+        recipients.push({ code: rowCode, name: rowName });
       }
     }
     
@@ -1193,10 +1193,8 @@ function sendMessage(e) {
       rowsToAdd.push([now, senderCode, senderName, rec.code, rec.name, subject, body, '未読']);
     });
     
-    // 3. 一括書き込み
     if (rowsToAdd.length > 0) {
-      var lastRow = msgSheet.getLastRow();
-      msgSheet.getRange(lastRow + 1, 1, rowsToAdd.length, 8).setValues(rowsToAdd);
+      msgSheet.getRange(msgSheet.getLastRow() + 1, 1, rowsToAdd.length, 8).setValues(rowsToAdd);
     }
     
     return ContentService.createTextOutput(JSON.stringify({

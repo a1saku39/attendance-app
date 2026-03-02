@@ -399,32 +399,37 @@
         /* 送信方法の切り替えスイッチ */
         .send-type-container {
             display: flex;
-            background: #f1f5f9;
-            padding: 4px;
-            border-radius: 12px;
+            gap: 8px;
             margin-bottom: 20px;
         }
 
         .send-type-btn {
             flex: 1;
-            padding: 10px;
+            padding: 12px 8px;
             text-align: center;
-            border-radius: 10px;
+            border-radius: 12px;
             cursor: pointer;
             font-size: 14px;
             font-weight: 600;
             color: #64748b;
-            transition: all 0.2s;
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            transition: all 0.3s;
             user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .send-type-btn:hover {
+            border-color: #cbd5e1;
             color: #475569;
         }
 
         .send-type-btn.active {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
+            border-color: transparent;
             box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
         }
 
