@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>個人メッセージ - 勤怠管理アプリ</title>
+    <title>個別メッセージ - 勤怠管理アプリ</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         * {
@@ -403,8 +403,8 @@
         <a href="index.html" class="back-link">← メニューへ戻る</a>
 
         <div class="header">
-            <h1>✉️ 個人メッセージ</h1>
-            <p class="subtitle">社員間でメッセージのやり取りができます</p>
+            <h1>✉️ 個別メッセージ</h1>
+            <p class="subtitle">個人、部署単位、または全社員へメッセージを送信できます</p>
         </div>
 
         <div id="messageArea"></div>
@@ -447,12 +447,48 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="recipientSelect">宛先 <span class="required">*</span></label>
+                    <label>送信方法 <span class="required">*</span></label>
+                    <div style="display: flex; gap: 15px; margin-top: 5px;">
+                        <label
+                            style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: normal;">
+                            <input type="radio" name="sendType" value="individual" checked
+                                onclick="toggleRecipientType()" style="width: auto;"> 個人
+                        </label>
+                        <label
+                            style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: normal;">
+                            <input type="radio" name="sendType" value="group" onclick="toggleRecipientType()"
+                                style="width: auto;"> 部署単位
+                        </label>
+                        <label
+                            style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: normal;">
+                            <input type="radio" name="sendType" value="all" onclick="toggleRecipientType()"
+                                style="width: auto;"> 全員（一斉）
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group" id="recipient-individual-group">
+                    <label for="recipientSelect">宛先社員 <span class="required">*</span></label>
                     <select id="recipientSelect">
                         <option value="">読み込み中...</option>
                     </select>
-                    <div id="recipientStatus" class="recipient-status"></div>
                 </div>
+
+                <div class="form-group" id="recipient-group-group" style="display: none;">
+                    <label for="deptSelect">宛先部署 <span class="required">*</span></label>
+                    <select id="deptSelect">
+                        <option value="">読み込み中...</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="recipient-all-msg" style="display: none;">
+                    <p
+                        style="padding: 10px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px; font-size: 13px; color: #92400e;">
+                        💡 社員マスタに登録されている全社員（送信者を除く）へ一斉送信されます。
+                    </p>
+                </div>
+
+                <div id="recipientStatus" class="recipient-status"></div>
 
                 <div class="form-group">
                     <label for="msgSubject">件名 <span class="required">*</span></label>
@@ -484,6 +520,7 @@
 
     <script>
         let employees = [];
+        let departments = [];
         let myEmployeeCode = '';
 
         window.onload = function () {
@@ -493,9 +530,25 @@
                 document.getElementById('senderCode').value = savedId;
                 myEmployeeCode = savedId;
             }
-            loadEmployees();
+            loadFormPresets();
             loadMessages();
         };
+
+        async function loadFormPresets() {
+            await loadEmployees();
+            await loadDepartments();
+        }
+
+        function toggleRecipientType() {
+            const sendType = document.querySelector('input[name="sendType"]:checked').value;
+            const indGroup = document.getElementById('recipient-individual-group');
+            const grpGroup = document.getElementById('recipient-group-group');
+            const allMsg = document.getElementById('recipient-all-msg');
+
+            indGroup.style.display = (sendType === 'individual') ? 'block' : 'none';
+            grpGroup.style.display = (sendType === 'group') ? 'block' : 'none';
+            allMsg.style.display = (sendType === 'all') ? 'block' : 'none';
+        }
 
         function switchTab(tabName) {
             // タブボタンの切替
@@ -565,11 +618,43 @@
             select.innerHTML = '<option value="">-- 宛先を選択（' + employees.length + '名）--</option>';
 
             employees.forEach(emp => {
+                // 自分以外をリストアップ
+                if (emp.code === myEmployeeCode) return;
                 const opt = document.createElement('option');
                 opt.value = emp.code;
                 opt.textContent = emp.name + '（' + emp.department + '）- ' + emp.code;
                 select.appendChild(opt);
             });
+        }
+
+        async function loadDepartments() {
+            const gasUrl = localStorage.getItem('attendance_gas_url');
+            const select = document.getElementById('deptSelect');
+            if (!gasUrl) return;
+
+            try {
+                const response = await fetch(gasUrl, {
+                    method: 'POST',
+                    redirect: 'follow',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'getDepartments' })
+                });
+                const data = await response.json();
+                if (data.result === 'success') {
+                    departments = data.departments || [];
+                    select.innerHTML = '<option value="">-- 部署を選択 --</option>';
+                    departments.forEach(dept => {
+                        if (dept === '未設定') return;
+                        const opt = document.createElement('option');
+                        opt.value = dept;
+                        opt.textContent = dept;
+                        select.appendChild(opt);
+                    });
+                }
+            } catch (error) {
+                console.error('部署一覧取得エラー:', error);
+                select.innerHTML = '<option value="">-- 読み込みエラー --</option>';
+            }
         }
 
         async function loadMessages() {
@@ -689,11 +774,19 @@
         async function sendMessage() {
             const gasUrl = localStorage.getItem('attendance_gas_url');
             const senderCode = document.getElementById('senderCode').value.trim();
-            const recipientCode = document.getElementById('recipientSelect').value;
+            const sendType = document.querySelector('input[name="sendType"]:checked').value;
+            let recipientCode = '';
+
+            if (sendType === 'individual') {
+                recipientCode = document.getElementById('recipientSelect').value;
+            } else if (sendType === 'group') {
+                recipientCode = document.getElementById('deptSelect').value;
+            }
+
             const subject = document.getElementById('msgSubject').value.trim();
             const body = document.getElementById('msgBody').value.trim();
 
-            if (!senderCode || !recipientCode || !subject || !body) {
+            if (!senderCode || (sendType !== 'all' && !recipientCode) || !subject || !body) {
                 showMessage('error', 'すべての必須項目を入力してください');
                 return;
             }
@@ -715,6 +808,7 @@
                     body: JSON.stringify({
                         action: 'sendMessage',
                         senderCode: senderCode,
+                        sendType: sendType,
                         recipientCode: recipientCode,
                         subject: subject,
                         body: body
@@ -725,10 +819,11 @@
                 const data = JSON.parse(text);
 
                 if (data.result === 'success') {
-                    showMessage('success', 'メッセージを送信しました！');
+                    showMessage('success', data.message || 'メッセージを送信しました！');
                     document.getElementById('msgSubject').value = '';
                     document.getElementById('msgBody').value = '';
                     document.getElementById('recipientSelect').value = '';
+                    document.getElementById('deptSelect').value = '';
 
                     // 送信済みタブに切替
                     setTimeout(() => {

@@ -863,15 +863,12 @@ function saveHolidaySettings(e) {
 function getVersionInfo() {
   try {
     var versionInfo = {
-      version: 'v3.4',
-      releaseDate: '2026-02-24',
+      version: 'v3.5',
+      releaseDate: '2026-03-02',
       updateNotes: [
-        '個人メッセージ機能を追加（社員間でメッセージの送受信が可能に）',
-        '未読メッセージ通知をメニューに表示',
-        '要望・フィードバック投稿機能を追加',
-        '掲示板機能を追加',
-        '休日出勤時の夜間・休日作業報告書メール通知機能を追加',
-        'メニューにバージョン番号を表示'
+        '「個人メッセージ」を「個別メッセージ」に名称変更',
+        '個別メッセージに送信範囲の選択（個人・グループ・全員）を追加',
+        'メッセージ送信のグループ化（部署単位の一斉送信）に対応'
       ]
     };
     
@@ -1111,43 +1108,77 @@ function getEmployeeList() {
   }
 }
 
-// メッセージを送信する関数
+// メッセージを送信する関数（個人・グループ・全員）
 function sendMessage(e) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var jsonData = JSON.parse(e.postData.contents);
     
     var senderCode = jsonData.senderCode || '';
-    var recipientCode = jsonData.recipientCode || '';
+    var sendType = jsonData.sendType || 'individual'; // individual, group, all
+    var recipientCode = jsonData.recipientCode || ''; // typeに応じて社員コード, 部署名, または空
     var subject = jsonData.subject || '';
     var body = jsonData.body || '';
     
-    if (!senderCode || !recipientCode || !subject || !body) {
+    if (!senderCode || !subject || !body || (sendType !== 'all' && !recipientCode)) {
       return ContentService.createTextOutput(JSON.stringify({
         result: 'error',
-        message: 'すべての項目を入力してください'
+        message: '必須項目が不足しています'
       })).setMimeType(ContentService.MimeType.JSON);
     }
     
-    // 送信者名と受信者名を社員マスタから取得
     var masterSheet = ss.getSheetByName('社員マスタ');
-    var senderName = '不明';
-    var recipientName = '不明';
+    if (!masterSheet) {
+      throw new Error('社員マスタが見つかりません');
+    }
     
-    if (masterSheet && masterSheet.getLastRow() > 1) {
-      var masterValues = masterSheet.getRange(2, 1, masterSheet.getLastRow() - 1, 2).getValues();
-      for (var i = 0; i < masterValues.length; i++) {
-        if (String(masterValues[i][0]) === String(senderCode)) {
-          senderName = masterValues[i][1];
+    var masterRows = masterSheet.getLastRow();
+    if (masterRows <= 1) {
+      throw new Error('社員データが登録されていません');
+    }
+    
+    // 全社員データを取得 [コード, 氏名, 部署]
+    var masterValues = masterSheet.getRange(2, 1, masterRows - 1, 3).getValues();
+    var senderName = '不明';
+    var recipients = []; // {code: string, name: string} の配列
+    
+    // 送信者の特定と、送信先リストの作成
+    for (var i = 0; i < masterValues.length; i++) {
+      var rowCode = String(masterValues[i][0]);
+      var rowName = String(masterValues[i][1]);
+      var rowDept = String(masterValues[i][2]);
+      
+      if (rowCode === String(senderCode)) {
+        senderName = rowName;
+      }
+      
+      // 送信先判定
+      if (sendType === 'all') {
+        // 全員（自分以外）
+        if (rowCode !== String(senderCode)) {
+          recipients.push({ code: rowCode, name: rowName });
         }
-        if (String(masterValues[i][0]) === String(recipientCode)) {
-          recipientName = masterValues[i][1];
+      } else if (sendType === 'group') {
+        // 部署内（自分以外）
+        if (rowDept === recipientCode && rowCode !== String(senderCode)) {
+          recipients.push({ code: rowCode, name: rowName });
+        }
+      } else {
+        // 個人
+        if (rowCode === String(recipientCode)) {
+          recipients.push({ code: rowCode, name: rowName });
         }
       }
     }
     
-    var msgSheet = ss.getSheetByName('メッセージ');
+    if (recipients.length === 0) {
+      return ContentService.createTextOutput(JSON.stringify({
+        result: 'error',
+        message: '送信先の社員が見つかりません'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
     
+    var msgSheet = ss.getSheetByName('メッセージ');
     // シートがない場合は作成
     if (!msgSheet) {
       msgSheet = ss.insertSheet('メッセージ');
@@ -1156,11 +1187,21 @@ function sendMessage(e) {
     }
     
     var now = new Date();
-    msgSheet.appendRow([now, senderCode, senderName, recipientCode, recipientName, subject, body, '未読']);
+    var rowsToAdd = [];
+    
+    // 各配信先にメッセージ行を作成
+    recipients.forEach(function(rec) {
+      rowsToAdd.push([now, senderCode, senderName, rec.code, rec.name, subject, body, '未読']);
+    });
+    
+    // 一括で追加（パフォーマンス考慮）
+    if (rowsToAdd.length > 0) {
+      msgSheet.getRange(msgSheet.getLastRow() + 1, 1, rowsToAdd.length, 8).setValues(rowsToAdd);
+    }
     
     return ContentService.createTextOutput(JSON.stringify({
       result: 'success',
-      message: 'メッセージを送信しました'
+      message: recipients.length + '名にメッセージを送信しました'
     })).setMimeType(ContentService.MimeType.JSON);
     
   } catch (error) {
