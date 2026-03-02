@@ -395,6 +395,42 @@
                 font-size: 13px;
             }
         }
+
+        /* 送信方法の切り替えスイッチ */
+        .send-type-container {
+            display: flex;
+            background: #f1f5f9;
+            padding: 4px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .send-type-btn {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: #64748b;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .send-type-btn:hover {
+            color: #475569;
+        }
+
+        .send-type-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .send-type-btn input {
+            display: none;
+        }
     </style>
 </head>
 
@@ -448,44 +484,43 @@
 
                 <div class="form-group">
                     <label>送信方法 <span class="required">*</span></label>
-                    <div style="display: flex; gap: 15px; margin-top: 5px;">
-                        <label
-                            style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: normal;">
-                            <input type="radio" name="sendType" value="individual" checked
-                                onclick="toggleRecipientType()" style="width: auto;"> 個人
+                    <div class="send-type-container" id="sendTypeContainer">
+                        <label class="send-type-btn active" data-type="individual">
+                            <input type="radio" name="sendType" value="individual" checked> 個人単位
                         </label>
-                        <label
-                            style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: normal;">
-                            <input type="radio" name="sendType" value="group" onclick="toggleRecipientType()"
-                                style="width: auto;"> 部署単位
+                        <label class="send-type-btn" data-type="group">
+                            <input type="radio" name="sendType" value="group"> 部署単位
                         </label>
-                        <label
-                            style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: normal;">
-                            <input type="radio" name="sendType" value="all" onclick="toggleRecipientType()"
-                                style="width: auto;"> 全員（一斉）
+                        <label class="send-type-btn" data-type="all">
+                            <input type="radio" name="sendType" value="all"> 全員一斉
                         </label>
                     </div>
                 </div>
 
                 <div class="form-group" id="recipient-individual-group">
                     <label for="recipientSelect">宛先社員 <span class="required">*</span></label>
-                    <select id="recipientSelect">
-                        <option value="">読み込み中...</option>
-                    </select>
+                    <div style="position: relative;">
+                        <select id="recipientSelect">
+                            <option value="">読み込み中...</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="form-group" id="recipient-group-group" style="display: none;">
                     <label for="deptSelect">宛先部署 <span class="required">*</span></label>
-                    <select id="deptSelect">
-                        <option value="">読み込み中...</option>
-                    </select>
+                    <div style="position: relative;">
+                        <select id="deptSelect">
+                            <option value="">読み込み中...</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="form-group" id="recipient-all-msg" style="display: none;">
-                    <p
-                        style="padding: 10px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px; font-size: 13px; color: #92400e;">
-                        💡 社員マスタに登録されている全社員（送信者を除く）へ一斉送信されます。
-                    </p>
+                    <div
+                        style="padding: 12px; background: #fff7ed; border: 1px solid #ffedd5; border-radius: 10px; font-size: 13px; color: #9a3412; display: flex; gap: 10px; align-items: flex-start;">
+                        <span style="font-size: 18px;">📢</span>
+                        <span>全社員（送信者を除く）へメッセージを一斉に送信します。多数の社員に送信されるため、完了まで時間がかかる場合があります。</span>
+                    </div>
                 </div>
 
                 <div id="recipientStatus" class="recipient-status"></div>
@@ -532,6 +567,7 @@
             }
             loadFormPresets();
             loadMessages();
+            initSendTypeButtons();
         };
 
         async function loadFormPresets() {
@@ -539,8 +575,22 @@
             await loadDepartments();
         }
 
+        function initSendTypeButtons() {
+            const btns = document.querySelectorAll('.send-type-btn');
+            btns.forEach(btn => {
+                btn.onclick = function () {
+                    btns.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    this.querySelector('input').checked = true;
+                    toggleRecipientType();
+                };
+            });
+        }
+
         function toggleRecipientType() {
-            const sendType = document.querySelector('input[name="sendType"]:checked').value;
+            const radio = document.querySelector('input[name="sendType"]:checked');
+            if (!radio) return;
+            const sendType = radio.value;
             const indGroup = document.getElementById('recipient-individual-group');
             const grpGroup = document.getElementById('recipient-group-group');
             const allMsg = document.getElementById('recipient-all-msg');

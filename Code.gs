@@ -1112,11 +1112,12 @@ function getEmployeeList() {
 function sendMessage(e) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var jsonData = JSON.parse(e.postData.contents);
+    var contents = e.postData.contents;
+    var jsonData = JSON.parse(contents);
     
-    var senderCode = jsonData.senderCode || '';
+    var senderCode = String(jsonData.senderCode || '').trim();
     var sendType = jsonData.sendType || 'individual'; // individual, group, all
-    var recipientCode = jsonData.recipientCode || ''; // typeに応じて社員コード, 部署名, または空
+    var recipientCode = String(jsonData.recipientCode || '').trim(); // typeに応じて社員コード or 部署名
     var subject = jsonData.subject || '';
     var body = jsonData.body || '';
     
@@ -1128,44 +1129,45 @@ function sendMessage(e) {
     }
     
     var masterSheet = ss.getSheetByName('社員マスタ');
-    if (!masterSheet) {
-      throw new Error('社員マスタが見つかりません');
-    }
+    if (!masterSheet) throw new Error('社員マスタが見つかりません');
     
     var masterRows = masterSheet.getLastRow();
-    if (masterRows <= 1) {
-      throw new Error('社員データが登録されていません');
-    }
+    if (masterRows <= 1) throw new Error('社員データが登録されていません');
     
     // 全社員データを取得 [コード, 氏名, 部署]
     var masterValues = masterSheet.getRange(2, 1, masterRows - 1, 3).getValues();
+    
+    // 1. まず送信者名を特定（ループ前に確定させる）
     var senderName = '不明';
+    for (var i = 0; i < masterValues.length; i++) {
+        if (String(masterValues[i][0]).trim() === senderCode) {
+            senderName = String(masterValues[i][1] || '不明').trim();
+            break;
+        }
+    }
+    
     var recipients = []; // {code: string, name: string} の配列
     
-    // 送信者の特定と、送信先リストの作成
+    // 2. 送信先リストを作成
     for (var i = 0; i < masterValues.length; i++) {
-      var rowCode = String(masterValues[i][0]);
-      var rowName = String(masterValues[i][1]);
-      var rowDept = String(masterValues[i][2]);
+      var rowCode = String(masterValues[i][0]).trim();
+      var rowName = String(masterValues[i][1] || '不明').trim();
+      var rowDept = String(masterValues[i][2] || '未設定').trim();
       
-      if (rowCode === String(senderCode)) {
-        senderName = rowName;
-      }
+      if (!rowCode) continue; // 空行スキップ
+      
+      // 自分への送信はスキップ
+      if (rowCode === senderCode) continue;
       
       // 送信先判定
       if (sendType === 'all') {
-        // 全員（自分以外）
-        if (rowCode !== String(senderCode)) {
-          recipients.push({ code: rowCode, name: rowName });
-        }
+        recipients.push({ code: rowCode, name: rowName });
       } else if (sendType === 'group') {
-        // 部署内（自分以外）
-        if (rowDept === recipientCode && rowCode !== String(senderCode)) {
+        if (rowDept === recipientCode) {
           recipients.push({ code: rowCode, name: rowName });
         }
-      } else {
-        // 個人
-        if (rowCode === String(recipientCode)) {
+      } else if (sendType === 'individual') {
+        if (rowCode === recipientCode) {
           recipients.push({ code: rowCode, name: rowName });
         }
       }
@@ -1174,12 +1176,11 @@ function sendMessage(e) {
     if (recipients.length === 0) {
       return ContentService.createTextOutput(JSON.stringify({
         result: 'error',
-        message: '送信先の社員が見つかりません'
+        message: '条件に一致する送信先の社員が見つかりません'
       })).setMimeType(ContentService.MimeType.JSON);
     }
     
     var msgSheet = ss.getSheetByName('メッセージ');
-    // シートがない場合は作成
     if (!msgSheet) {
       msgSheet = ss.insertSheet('メッセージ');
       msgSheet.appendRow(['日時', '送信者コード', '送信者名', '受信者コード', '受信者名', '件名', '本文', 'ステータス']);
@@ -1188,15 +1189,14 @@ function sendMessage(e) {
     
     var now = new Date();
     var rowsToAdd = [];
-    
-    // 各配信先にメッセージ行を作成
     recipients.forEach(function(rec) {
       rowsToAdd.push([now, senderCode, senderName, rec.code, rec.name, subject, body, '未読']);
     });
     
-    // 一括で追加（パフォーマンス考慮）
+    // 3. 一括書き込み
     if (rowsToAdd.length > 0) {
-      msgSheet.getRange(msgSheet.getLastRow() + 1, 1, rowsToAdd.length, 8).setValues(rowsToAdd);
+      var lastRow = msgSheet.getLastRow();
+      msgSheet.getRange(lastRow + 1, 1, rowsToAdd.length, 8).setValues(rowsToAdd);
     }
     
     return ContentService.createTextOutput(JSON.stringify({
@@ -1207,7 +1207,7 @@ function sendMessage(e) {
   } catch (error) {
     return ContentService.createTextOutput(JSON.stringify({
       result: 'error',
-      message: error.toString()
+      message: 'システムエラー: ' + error.toString()
     })).setMimeType(ContentService.MimeType.JSON);
   }
 }
