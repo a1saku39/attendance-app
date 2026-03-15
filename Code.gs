@@ -1157,12 +1157,13 @@ function sendMessage(e) {
       var rowDept = String(dataRows[i][2] || '未設定').trim();
       
       if (!rowCode) continue; 
-      if (rowCode === senderCode) continue; // 自分へは送らない
       
       var shouldSend = false;
       if (sendType === 'all') {
-        shouldSend = true;
+        // 全員一斉の場合は、自分自身には送らない（従来通り）
+        if (rowCode !== senderCode) shouldSend = true;
       } else if (sendType === 'group') {
+        // 部署単位の場合は、部署内の全員（自分自身を含む）に送ることで「届いていない」という誤解を防ぐ
         if (rowDept === recipientCode) shouldSend = true;
       } else if (sendType === 'individual') {
         if (rowCode === recipientCode) shouldSend = true;
@@ -1744,7 +1745,7 @@ function getDepartments() {
     var uniqueDepts = {};
     
     for (var i = 0; i < values.length; i++) {
-      var dept = values[i][0];
+      var dept = String(values[i][0] || '').trim();
       if (dept && !uniqueDepts[dept]) {
         uniqueDepts[dept] = true;
         departments.push(dept);

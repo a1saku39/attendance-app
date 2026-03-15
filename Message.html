@@ -687,6 +687,8 @@
             const select = document.getElementById('deptSelect');
             if (!gasUrl) return;
 
+            select.innerHTML = '<option value="">読み込み中...</option>';
+
             try {
                 const response = await fetch(gasUrl, {
                     method: 'POST',
@@ -694,7 +696,14 @@
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify({ action: 'getDepartments' })
                 });
-                const data = await response.json();
+                const text = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (parseErr) {
+                    console.error('部署一覧JSONパースエラー:', text.substring(0, 200));
+                    throw new Error('サーバーの応答を解析できません。デプロイを更新してください。');
+                }
                 if (data.result === 'success') {
                     departments = data.departments || [];
                     select.innerHTML = '<option value="">-- 部署を選択 --</option>';
@@ -705,6 +714,12 @@
                         opt.textContent = dept;
                         select.appendChild(opt);
                     });
+                    if (departments.filter(d => d !== '未設定').length === 0) {
+                        select.innerHTML = '<option value="">-- 部署データなし --</option>';
+                    }
+                } else {
+                    select.innerHTML = '<option value="">-- 取得失敗 --</option>';
+                    console.error('部署取得エラー:', data.message);
                 }
             } catch (error) {
                 console.error('部署一覧取得エラー:', error);
