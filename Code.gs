@@ -90,6 +90,12 @@ function doPost(e) {
     } else if (action === 'getDailyReports') { // 日報取得
        debugSheet.appendRow([new Date(), 'API実行: getDailyReports']);
        return getDailyReports(e);
+    } else if (action === 'updateDailyReport') { // 日報更新
+       debugSheet.appendRow([new Date(), 'API実行: updateDailyReport']);
+       return updateDailyReport(e);
+    } else if (action === 'deleteDailyReport') { // 日報削除
+       debugSheet.appendRow([new Date(), 'API実行: deleteDailyReport']);
+       return deleteDailyReport(e);
     }
     
     // 以下、通常の打刻処理（action が 'in'、'out'、'location' の場合のみ）
@@ -2794,17 +2800,26 @@ function saveDailyReport(e) {
       reportSheet = ss.insertSheet('日報');
       reportSheet.appendRow([
         '記録日時', '日付', '社員コード', '社員名',
-        '商談日時', '顧客名', '商談目的',
+        '商談日時', '商談時間(分)', '顧客名', '商談目的',
         'P（計画・目標）', 'D（実行・商談内容）', 'C（結果・評価）', 'A（次回アクション）'
       ]);
-      var header = reportSheet.getRange(1, 1, 1, 11);
+      var header = reportSheet.getRange(1, 1, 1, 12);
       header.setFontWeight('bold').setBackground('#e8eaf6').setFontColor('#3730a3');
       reportSheet.setFrozenRows(1);
-      reportSheet.setColumnWidths(1, 11, 160);
-      reportSheet.setColumnWidth(8, 200);
-      reportSheet.setColumnWidth(9, 200);
+      reportSheet.setColumnWidths(1, 12, 140);
+      reportSheet.setColumnWidth(9,  200);
       reportSheet.setColumnWidth(10, 200);
       reportSheet.setColumnWidth(11, 200);
+      reportSheet.setColumnWidth(12, 200);
+    } else {
+      // 既存シートに商談時間列がない場合は追加（転僕防止）
+      var currentHeader = reportSheet.getRange(1, 1, 1, reportSheet.getLastColumn()).getValues()[0];
+      if (currentHeader.indexOf('商談時間(分)') === -1) {
+        // 旧形式（11列）にヘッダー追加
+        var lastCol = reportSheet.getLastColumn();
+        reportSheet.getRange(1, lastCol + 1).setValue('商談時間(分)');
+        reportSheet.getRange(1, 1, 1, lastCol + 1).setFontWeight('bold').setBackground('#e8eaf6').setFontColor('#3730a3');
+      }
     }
     
     var now = new Date();
@@ -2816,18 +2831,19 @@ function saveDailyReport(e) {
         reportDate,
         employeeCode,
         employeeName,
-        String(m.meetingDatetime || '').trim(),
-        String(m.customerName    || '').trim(),
-        String(m.purpose         || '').trim(),
-        String(m.plan            || '').trim(), // P
-        String(m.doContent       || '').trim(), // D
-        String(m.check           || '').trim(), // C
-        String(m.action          || '').trim()  // A
+        String(m.meetingDatetime  || '').trim(),
+        String(m.meetingDuration  || '').trim(), // 商談時間(分)
+        String(m.customerName     || '').trim(),
+        String(m.purpose          || '').trim(),
+        String(m.plan             || '').trim(), // P
+        String(m.doContent        || '').trim(), // D
+        String(m.check            || '').trim(), // C
+        String(m.action           || '').trim()  // A
       ]);
     });
     
     if (rowsToAdd.length > 0) {
-      reportSheet.getRange(reportSheet.getLastRow() + 1, 1, rowsToAdd.length, 11).setValues(rowsToAdd);
+      reportSheet.getRange(reportSheet.getLastRow() + 1, 1, rowsToAdd.length, 12).setValues(rowsToAdd);
     }
     
     return ContentService.createTextOutput(JSON.stringify({
@@ -2860,7 +2876,7 @@ function getDailyReports(e) {
       })).setMimeType(ContentService.MimeType.JSON);
     }
     
-    var values = reportSheet.getRange(2, 1, reportSheet.getLastRow() - 1, 11).getValues();
+    var values = reportSheet.getRange(2, 1, reportSheet.getLastRow() - 1, reportSheet.getLastColumn()).getValues();
     var reports = [];
     
     for (var i = 0; i < values.length; i++) {
@@ -2891,18 +2907,22 @@ function getDailyReports(e) {
         recordedStr = String(recordedAt);
       }
       
+      // 旧データは11列かも・最大列数を考慮して安全に取得
+      var numCols = values[0].length; // 実際の列数に従う
       reports.push({
-        recordedAt:      recordedStr,
-        date:            rowDateStr,
-        employeeCode:    rowCode,
-        employeeName:    String(values[i][3]),
-        meetingDatetime: String(values[i][4]),
-        customerName:    String(values[i][5]),
-        purpose:         String(values[i][6]),
-        plan:            String(values[i][7]),
-        doContent:       String(values[i][8]),
-        check:           String(values[i][9]),
-        action:          String(values[i][10])
+        rowIndex:         i + 2, // シートの実際の行番号（ヘッダー除く）
+        recordedAt:       recordedStr,
+        date:             rowDateStr,
+        employeeCode:     rowCode,
+        employeeName:     String(values[i][3]),
+        meetingDatetime:  String(values[i][4]),
+        meetingDuration:  numCols >= 12 ? String(values[i][5])  : '', // 商談時間(分)
+        customerName:     numCols >= 12 ? String(values[i][6])  : String(values[i][5]),
+        purpose:          numCols >= 12 ? String(values[i][7])  : String(values[i][6]),
+        plan:             numCols >= 12 ? String(values[i][8])  : String(values[i][7]),
+        doContent:        numCols >= 12 ? String(values[i][9])  : String(values[i][8]),
+        check:            numCols >= 12 ? String(values[i][10]) : String(values[i][9]),
+        action:           numCols >= 12 ? String(values[i][11]) : String(values[i][10])
       });
     }
     
@@ -2915,6 +2935,81 @@ function getDailyReports(e) {
     return ContentService.createTextOutput(JSON.stringify({
       result: 'error',
       message: error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// 日報を更新する関数（rowIndex で対象行を特定）
+function updateDailyReport(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var jsonData = JSON.parse(e.postData.contents);
+    
+    var rowIndex = parseInt(jsonData.rowIndex, 10);
+    if (!rowIndex || rowIndex < 2) {
+      return ContentService.createTextOutput(JSON.stringify({
+        result: 'error', message: '行番号が無効です'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    var reportSheet = ss.getSheetByName('日報');
+    if (!reportSheet || reportSheet.getLastRow() < rowIndex) {
+      return ContentService.createTextOutput(JSON.stringify({
+        result: 'error', message: '対象の行が見つかりません'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // 列: [記録日時(1), 日付(2), 社員コード(3), 社員名(4),
+    //      商談日時(5), 商談時間(分)(6), 顧客名(7), 商談目的(8), P(9), D(10), C(11), A(12)]
+    reportSheet.getRange(rowIndex, 5).setValue(String(jsonData.meetingDatetime  || ''));
+    reportSheet.getRange(rowIndex, 6).setValue(String(jsonData.meetingDuration  || ''));
+    reportSheet.getRange(rowIndex, 7).setValue(String(jsonData.customerName     || ''));
+    reportSheet.getRange(rowIndex, 8).setValue(String(jsonData.purpose          || ''));
+    reportSheet.getRange(rowIndex, 9).setValue(String(jsonData.plan             || ''));
+    reportSheet.getRange(rowIndex, 10).setValue(String(jsonData.doContent       || ''));
+    reportSheet.getRange(rowIndex, 11).setValue(String(jsonData.check           || ''));
+    reportSheet.getRange(rowIndex, 12).setValue(String(jsonData.action          || ''));
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'success', message: '日報を更新しました'
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'error', message: error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// 日報を削除する関数（rowIndex で対象行を削除）
+function deleteDailyReport(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var jsonData = JSON.parse(e.postData.contents);
+    
+    var rowIndex = parseInt(jsonData.rowIndex, 10);
+    if (!rowIndex || rowIndex < 2) {
+      return ContentService.createTextOutput(JSON.stringify({
+        result: 'error', message: '行番号が無効です'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    var reportSheet = ss.getSheetByName('日報');
+    if (!reportSheet || reportSheet.getLastRow() < rowIndex) {
+      return ContentService.createTextOutput(JSON.stringify({
+        result: 'error', message: '対象の行が見つかりません'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    reportSheet.deleteRow(rowIndex);
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'success', message: '日報を削除しました'
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'error', message: error.toString()
     })).setMimeType(ContentService.MimeType.JSON);
   }
 }
