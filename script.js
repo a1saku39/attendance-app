@@ -471,6 +471,9 @@ document.addEventListener('DOMContentLoaded', function () {
     checkUnreadMessages();
     // 3分ごとに未読チェック
     setInterval(checkUnreadMessages, 3 * 60 * 1000);
+
+    // 掲示板バナーの読み込み
+    loadBoardBanner();
 });
 
 // バージョンチェック機能
@@ -612,4 +615,103 @@ async function checkUnreadMessages() {
     } catch (error) {
         console.error('未読チェックエラー:', error);
     }
+}
+
+// ========================================
+// 掲示板バナー
+// ========================================
+async function loadBoardBanner() {
+    const gasUrl = localStorage.getItem('attendance_gas_url');
+    const bannerEl = document.getElementById('boardBanner');
+    if (!gasUrl || !bannerEl) return;
+
+    try {
+        const response = await fetch(gasUrl, {
+            method: 'POST',
+            redirect: 'follow',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'getBoardPosts' })
+        });
+        const text = await response.text();
+        let data;
+        try { data = JSON.parse(text); } catch (e) { return; }
+
+        if (data.result !== 'success' || !data.posts || data.posts.length === 0) return;
+
+        // 閉じた投稿IDを取得 (タイトル+日付のハッシュで管理)
+        const dismissed = JSON.parse(localStorage.getItem('board_dismissed') || '[]');
+
+        // 直近30日・最大5件に絞り込み
+        const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+        const typeIcons = { important: '🔔', update: '🆕', info: 'ℹ️' };
+        const typeClass = { important: 'type-important', update: 'type-update', info: 'type-info' };
+
+        let html = '';
+        let shown = 0;
+
+        for (const post of data.posts) {
+            if (shown >= 5) break;
+            const key = (post.title + post.date).replace(/\s/g, '');
+            if (dismissed.includes(key)) continue;
+
+            const cls = typeClass[post.type] || 'type-default';
+            const icon = typeIcons[post.type] || '📌';
+            // 本文プレビュー（改行をスペースに変換）
+            const preview = (post.content || '').replace(/\\n/g, ' ').replace(/\n/g, ' ');
+
+            html += `
+                <div class="board-banner-item ${cls}" id="banner-${shown}">
+                    <span class="board-banner-icon">${icon}</span>
+                    <div class="board-banner-body">
+                        <div class="board-banner-header">
+                            <span class="board-banner-title">${escBanner(post.title)}</span>
+                            <span class="board-banner-date">${post.date}</span>
+                        </div>
+                        <div class="board-banner-preview">${escBanner(preview)}</div>
+                        <a href="Board.html" class="board-banner-link">📌 掲示板を開く →</a>
+                    </div>
+                    <button class="board-banner-close" onclick="dismissBanner('${key}', 'banner-${shown}')" title="閉じる">✕</button>
+                </div>`;
+            shown++;
+        }
+
+        if (shown > 0) {
+            bannerEl.innerHTML = html;
+            bannerEl.style.display = 'block';
+        }
+
+    } catch (e) {
+        console.error('掲示板バナー取得エラー:', e);
+    }
+}
+
+function dismissBanner(key, elemId) {
+    // 要素を削除
+    const el = document.getElementById(elemId);
+    if (el) {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(-6px)';
+        el.style.transition = 'opacity 0.25s, transform 0.25s';
+        setTimeout(() => {
+            el.remove();
+            // すべて閉じたらバナーエリアを非表示
+            const bannerEl = document.getElementById('boardBanner');
+            if (bannerEl && bannerEl.children.length === 0) {
+                bannerEl.style.display = 'none';
+            }
+        }, 250);
+    }
+    // 閉じた項目を記録（最大50件まで保持）
+    const dismissed = JSON.parse(localStorage.getItem('board_dismissed') || '[]');
+    if (!dismissed.includes(key)) {
+        dismissed.push(key);
+        if (dismissed.length > 50) dismissed.shift();
+        localStorage.setItem('board_dismissed', JSON.stringify(dismissed));
+    }
+}
+
+function escBanner(str) {
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
 }
