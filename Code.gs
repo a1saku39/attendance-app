@@ -84,6 +84,12 @@ function doPost(e) {
     } else if (action === 'markMessageRead') { // メッセージ既読
        debugSheet.appendRow([new Date(), 'API実行: markMessageRead']);
        return markMessageRead(e);
+    } else if (action === 'saveDailyReport') { // 日報保存
+       debugSheet.appendRow([new Date(), 'API実行: saveDailyReport']);
+       return saveDailyReport(e);
+    } else if (action === 'getDailyReports') { // 日報取得
+       debugSheet.appendRow([new Date(), 'API実行: getDailyReports']);
+       return getDailyReports(e);
     }
     
     // 以下、通常の打刻処理（action が 'in'、'out'、'location' の場合のみ）
@@ -2738,4 +2744,177 @@ function testApprovalStatus() {
   var result = getApprovalStatus("1359", "2025-12");
   Logger.log("結果: " + JSON.stringify(result));
   Logger.log("=== テスト終了 ===");
+}
+
+// =============================================
+// 日報機能
+// =============================================
+
+// 日報を保存する関数
+// シート「日報」にヘッダー: [記録日時, 日付, 社員コード, 社員名, 商談日時, 顧客名, 商談目的, P(計画), D(実行), C(評価), A(次回アクション)]
+function saveDailyReport(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var jsonData = JSON.parse(e.postData.contents);
+    
+    var employeeCode = String(jsonData.employeeCode || '').trim();
+    var reportDate   = String(jsonData.reportDate   || '').trim(); // YYYY/MM/DD
+    var meetings     = jsonData.meetings || []; // 複数商談の配列
+    
+    if (!employeeCode || !reportDate) {
+      return ContentService.createTextOutput(JSON.stringify({
+        result: 'error',
+        message: '社員コードまたは日付が不足しています'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    if (meetings.length === 0) {
+      return ContentService.createTextOutput(JSON.stringify({
+        result: 'error',
+        message: '商談情報が入力されていません'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // 社員名を取得
+    var masterSheet = ss.getSheetByName('社員マスタ');
+    var employeeName = '不明(' + employeeCode + ')';
+    if (masterSheet && masterSheet.getLastRow() > 1) {
+      var masterValues = masterSheet.getRange(2, 1, masterSheet.getLastRow() - 1, 2).getValues();
+      for (var i = 0; i < masterValues.length; i++) {
+        if (String(masterValues[i][0]).trim() === employeeCode) {
+          employeeName = String(masterValues[i][1]).trim();
+          break;
+        }
+      }
+    }
+    
+    // 日報シートを取得または作成
+    var reportSheet = ss.getSheetByName('日報');
+    if (!reportSheet) {
+      reportSheet = ss.insertSheet('日報');
+      reportSheet.appendRow([
+        '記録日時', '日付', '社員コード', '社員名',
+        '商談日時', '顧客名', '商談目的',
+        'P（計画・目標）', 'D（実行・商談内容）', 'C（結果・評価）', 'A（次回アクション）'
+      ]);
+      var header = reportSheet.getRange(1, 1, 1, 11);
+      header.setFontWeight('bold').setBackground('#e8eaf6').setFontColor('#3730a3');
+      reportSheet.setFrozenRows(1);
+      reportSheet.setColumnWidths(1, 11, 160);
+      reportSheet.setColumnWidth(8, 200);
+      reportSheet.setColumnWidth(9, 200);
+      reportSheet.setColumnWidth(10, 200);
+      reportSheet.setColumnWidth(11, 200);
+    }
+    
+    var now = new Date();
+    var rowsToAdd = [];
+    
+    meetings.forEach(function(m) {
+      rowsToAdd.push([
+        now,
+        reportDate,
+        employeeCode,
+        employeeName,
+        String(m.meetingDatetime || '').trim(),
+        String(m.customerName    || '').trim(),
+        String(m.purpose         || '').trim(),
+        String(m.plan            || '').trim(), // P
+        String(m.doContent       || '').trim(), // D
+        String(m.check           || '').trim(), // C
+        String(m.action          || '').trim()  // A
+      ]);
+    });
+    
+    if (rowsToAdd.length > 0) {
+      reportSheet.getRange(reportSheet.getLastRow() + 1, 1, rowsToAdd.length, 11).setValues(rowsToAdd);
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'success',
+      message: meetings.length + '件の商談記録を日報に保存しました'
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'error',
+      message: 'システムエラー: ' + error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// 日報を取得する関数（社員コードと年月で絞り込み）
+function getDailyReports(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var jsonData = JSON.parse(e.postData.contents);
+    
+    var employeeCode = String(jsonData.employeeCode || '').trim();
+    var yearMonth    = String(jsonData.yearMonth    || '').trim(); // YYYY-MM
+    
+    var reportSheet = ss.getSheetByName('日報');
+    if (!reportSheet || reportSheet.getLastRow() <= 1) {
+      return ContentService.createTextOutput(JSON.stringify({
+        result: 'success',
+        reports: []
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    var values = reportSheet.getRange(2, 1, reportSheet.getLastRow() - 1, 11).getValues();
+    var reports = [];
+    
+    for (var i = 0; i < values.length; i++) {
+      var rowDate = values[i][1]; // 日付列
+      var rowDateStr = '';
+      if (rowDate instanceof Date) {
+        rowDateStr = Utilities.formatDate(rowDate, 'Asia/Tokyo', 'yyyy/MM/dd');
+      } else {
+        rowDateStr = String(rowDate).trim();
+      }
+      
+      var rowCode = String(values[i][2]).trim();
+      
+      // 社員コードフィルタ
+      if (employeeCode && rowCode !== employeeCode) continue;
+      
+      // 年月フィルタ
+      if (yearMonth) {
+        var ym = yearMonth.replace('-', '/'); // YYYY/MM
+        if (rowDateStr.indexOf(ym) !== 0) continue;
+      }
+      
+      var recordedAt = values[i][0];
+      var recordedStr = '';
+      if (recordedAt instanceof Date) {
+        recordedStr = Utilities.formatDate(recordedAt, 'Asia/Tokyo', 'yyyy/MM/dd HH:mm');
+      } else {
+        recordedStr = String(recordedAt);
+      }
+      
+      reports.push({
+        recordedAt:      recordedStr,
+        date:            rowDateStr,
+        employeeCode:    rowCode,
+        employeeName:    String(values[i][3]),
+        meetingDatetime: String(values[i][4]),
+        customerName:    String(values[i][5]),
+        purpose:         String(values[i][6]),
+        plan:            String(values[i][7]),
+        doContent:       String(values[i][8]),
+        check:           String(values[i][9]),
+        action:          String(values[i][10])
+      });
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'success',
+      reports: reports
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'error',
+      message: error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
 }
