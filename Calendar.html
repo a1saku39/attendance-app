@@ -502,6 +502,7 @@
 
             fetch(gasUrl, {
                 method: 'POST',
+                redirect: 'follow',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify({
                     action: 'getPersonalMonthlyData',
@@ -509,16 +510,24 @@
                     yearMonth: yearMonth
                 })
             })
-                .then(response => response.json())
-                .then(data => {
+                .then(response => response.text())
+                .then(text => {
+                    let data;
+                    try {
+                        data = JSON.parse(text);
+                    } catch (parseErr) {
+                        console.error('JSONパースエラー:', text.substring(0, 200));
+                        showMessage('error', 'サーバーの応答を解析できません。GASのデプロイを最新バージョンに更新してください。');
+                        return;
+                    }
                     if (data.result === 'success') {
                         console.log('取得データ:', data);
                         console.log('休日データ:', data.holidays);
                         document.getElementById('messageArea').innerHTML = '';
-                        currentAttendanceData = data.data;
-                        renderCalendar(yearMonth, data.data, data.holidays || {});
+                        currentAttendanceData = data.data || {};
+                        renderCalendar(yearMonth, data.data || {}, data.holidays || {});
                     } else {
-                        showMessage('error', 'データ取得エラー: ' + data.message);
+                        showMessage('error', 'データ取得エラー: ' + (data.message || '不明なエラー'));
                     }
                 })
                 .catch(err => {
@@ -731,21 +740,30 @@
 
             fetch(gasUrl, {
                 method: 'POST',
+                redirect: 'follow',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify(data)
             })
-                .then(response => response.json())
-                .then(result => {
+                .then(response => response.text())
+                .then(text => {
+                    let result;
+                    try {
+                        result = JSON.parse(text);
+                    } catch (parseErr) {
+                        alert('サーバーの応答を解析できません。GASのデプロイを最新バージョンに更新してください。');
+                        document.getElementById('messageArea').innerHTML = '';
+                        return;
+                    }
                     if (result.result === 'success') {
                         alert('保存しました！');
-                        loadCalendarData(); // リロードして最新データを表示
+                        loadCalendarData();
                     } else {
                         alert('エラー: ' + result.message);
+                        document.getElementById('messageArea').innerHTML = '';
                     }
                 })
                 .catch(err => {
                     alert('通信エラー: ' + err.message);
-                    // メッセージエリアをクリアして元の表示に戻すなどの処理が必要かもしれない
                     document.getElementById('messageArea').innerHTML = '';
                 });
         }
