@@ -96,6 +96,9 @@ function doPost(e) {
     } else if (action === 'deleteDailyReport') { // 日報削除
        debugSheet.appendRow([new Date(), 'API実行: deleteDailyReport']);
        return deleteDailyReport(e);
+    } else if (action === 'searchAttendanceData') { // 打刻データ検索
+       debugSheet.appendRow([new Date(), 'API実行: searchAttendanceData']);
+       return searchAttendanceData(e);
     }
     
     // 以下、通常の打刻処理（action が 'in'、'out'、'location' の場合のみ）
@@ -2220,6 +2223,19 @@ function checkAndSendReminders() {
     console.log('祝日チェックに失敗しました（処理は続行します）: ' + e.toString());
   }
 
+  // 会社の設定休日チェック
+  try {
+    var yearMonth = Utilities.formatDate(now, "Asia/Tokyo", "yyyy-MM");
+    var todayForHoliday = Utilities.formatDate(now, "Asia/Tokyo", "yyyy-MM-dd");
+    var holidaysMap = getAllHolidaysMap(yearMonth);
+    if (holidaysMap && holidaysMap[todayForHoliday]) {
+      console.log('会社設定の休日のためリマインダーをスキップします: ' + holidaysMap[todayForHoliday]);
+      return;
+    }
+  } catch (e) {
+    console.log('会社休日チェックに失敗しました（処理は続行します）: ' + e.toString());
+  }
+
   // 3. 社員マスタ取得
   // A:コード, B:氏名, C:部署, ..., G:メールアドレス(7列目)
   var lastRow = masterSheet.getLastRow();
@@ -3010,6 +3026,111 @@ function deleteDailyReport(e) {
   } catch (error) {
     return ContentService.createTextOutput(JSON.stringify({
       result: 'error', message: error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// 打刻データ検索機能
+function searchAttendanceData(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var jsonData = JSON.parse(e.postData.contents);
+    
+    var searchCode = jsonData.employeeCode ? String(jsonData.employeeCode).trim() : "";
+    var searchName = jsonData.employeeName ? String(jsonData.employeeName).trim() : "";
+    var searchDept = jsonData.department ? String(jsonData.department).trim() : "";
+    var searchStartDate = jsonData.startDate ? String(jsonData.startDate).replace(/-/g, '/').trim() : ""; 
+    var searchEndDate = jsonData.endDate ? String(jsonData.endDate).replace(/-/g, '/').trim() : ""; 
+    
+    var sheets = ss.getSheets();
+    var results = [];
+    
+    for (var s = 0; s < sheets.length; s++) {
+      var sheet = sheets[s];
+      var sheetName = sheet.getName();
+      
+      // 打刻_ から始まるシートのみ対象
+      if (sheetName.indexOf('打刻_') === 0 && sheetName !== '打刻データ_全体') {
+        var deptName = sheetName.substring(3);
+        
+        // 部署でフィルタリング
+        if (searchDept && deptName.indexOf(searchDept) === -1 && searchDept !== deptName) {
+          continue;
+        }
+        
+        var lastRow = sheet.getLastRow();
+        var lastCol = sheet.getLastColumn();
+        if (lastRow > 1) {
+          var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+          var data = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+          
+          for (var r = 0; r < data.length; r++) {
+            var row = data[r];
+            var obj = {};
+            for (var c = 0; c < headers.length; c++) {
+              obj[headers[c]] = row[c];
+            }
+            
+            // 値の整形
+            var dateStr = obj['日にち'] instanceof Date ? Utilities.formatDate(obj['日にち'], "Asia/Tokyo", "yyyy/MM/dd") : String(obj['日にち'] || "");
+            var codeStr = String(obj['社員コード'] || "");
+            var nameStr = String(obj['名前'] || "");
+            var inTime = obj['出勤時刻'] instanceof Date ? Utilities.formatDate(obj['出勤時刻'], "Asia/Tokyo", "HH:mm") : String(obj['出勤時刻'] || "");
+            var outTime = obj['退勤時刻'] instanceof Date ? Utilities.formatDate(obj['退勤時刻'], "Asia/Tokyo", "HH:mm") : String(obj['退勤時刻'] || "");
+            
+            var workTime = "";
+            if (obj['勤務時間']) {
+              if (obj['勤務時間'] instanceof Date) {
+                 workTime = Utilities.formatDate(obj['勤務時間'], "Asia/Tokyo", "HH:mm");
+              } else if (!isNaN(obj['勤務時間']) && obj['勤務時間'] !== "") {
+                 var h = Math.floor(obj['勤務時間'] * 24);
+                 var m = Math.round((obj['勤務時間'] * 24 - h) * 60);
+                 workTime = h + ":" + (m < 10 ? "0" : "") + m;
+              } else {
+                 workTime = String(obj['勤務時間']);
+              }
+            }
+            
+            // フィルタ適用
+            if (searchCode && codeStr !== searchCode && codeStr.indexOf(searchCode) === -1) continue;
+            if (searchName && nameStr.indexOf(searchName) === -1) continue;
+            if (searchStartDate && dateStr < searchStartDate) continue;
+            if (searchEndDate && dateStr > searchEndDate) continue;
+            
+            results.push({
+              date: dateStr,
+              dayOfWeek: String(obj['曜日'] || ""),
+              employeeCode: codeStr,
+              employeeName: nameStr,
+              department: deptName,
+              inType: String(obj['種別出勤'] || ""),
+              inTime: inTime,
+              outType: String(obj['種別退勤'] || ""),
+              outTime: outTime,
+              workTime: workTime,
+              remarks: String(obj['備考'] || "")
+            });
+          }
+        }
+      }
+    }
+    
+    // 日付降順でソート
+    results.sort(function(a, b) {
+      if (a.date > b.date) return -1;
+      if (a.date < b.date) return 1;
+      return 0;
+    });
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'success',
+      data: results
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'error',
+      message: error.toString()
     })).setMimeType(ContentService.MimeType.JSON);
   }
 }
