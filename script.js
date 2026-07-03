@@ -57,8 +57,49 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('attendance_employee_id', id);
         if (id) {
             loadTodayAttendance();
+            checkAdmin(id);
+        } else {
+            hideAdminMenus();
         }
     });
+
+    // 管理者チェック
+    async function checkAdmin(empId) {
+        const gasUrl = localStorage.getItem('attendance_gas_url');
+        if (!gasUrl || !empId) return;
+
+        try {
+            const response = await fetch(gasUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({
+                    action: 'checkAdminStatus',
+                    employeeId: empId
+                })
+            });
+            const result = await response.json();
+            if (result.result === 'success' && result.isAdmin) {
+                document.getElementById('menu-survey-admin').style.display = 'block';
+                document.getElementById('menu-proposal-admin').style.display = 'block';
+            } else {
+                hideAdminMenus();
+            }
+        } catch (e) {
+            hideAdminMenus();
+        }
+    }
+
+    function hideAdminMenus() {
+        const menu1 = document.getElementById('menu-survey-admin');
+        const menu2 = document.getElementById('menu-proposal-admin');
+        if(menu1) menu1.style.display = 'none';
+        if(menu2) menu2.style.display = 'none';
+    }
+
+    // 初回ロード時
+    if (savedEmployeeId) {
+        checkAdmin(savedEmployeeId);
+    }
 
     // 本日の打刻時刻を取得して表示
     async function loadTodayAttendance() {

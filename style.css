@@ -786,5 +786,56 @@ details summary {
     line-height: 1;
     transition: color 0.2s;
     margin-top: 1px;
-}
 .board-banner-close:hover { color: #4b5563; }
+
+/* ==========================================================================
+   Mobile Optimization (Phase 3)
+   ========================================================================== */
+@media (max-width: 768px) {
+    /* 1. コンテナの幅調整 */
+    .container {
+        padding: 15px;
+        border-radius: 12px;
+        margin-top: 10px;
+    }
+    
+    /* 2. ボタンのタップ領域拡大 */
+    .btn, .action-btn, button {
+        padding: 12px 20px !important;
+        font-size: 1rem !important;
+    }
+    
+    .menu-button {
+        padding: 8px 12px !important;
+    }
+
+    /* 3. テーブルの横スクロール対応 */
+    table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+    
+    th, td {
+        padding: 8px 10px;
+    }
+
+    /* 4. ダッシュボードやカードのレイアウト調整 */
+    .grid-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .charts-row {
+        flex-direction: column;
+    }
+    
+    .chart-wrapper, .chart-box {
+        min-width: 100%;
+    }
+
+    /* 5. フォーム入力要素の高さ・フォント調整 */
+    input, select, textarea {
+        font-size: 16px !important; /* iOSでのズーム防止 */
+        padding: 12px !important;
+    }
+}

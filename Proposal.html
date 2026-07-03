@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>改善提案 - 勤怠管理アプリ</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 15px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; color: #374151; }
+        .form-group input[type="text"], .form-group textarea, .form-group select {
+            width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box;
+        }
+        .form-group textarea { height: 120px; resize: vertical; }
+        .checkbox-label { display: flex; align-items: center; gap: 8px; font-weight: normal; cursor: pointer; }
+        
+        .btn { padding: 10px 20px; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; width: 100%; }
+        .btn-primary { background: #2563eb; color: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                <button onclick="window.location.href='index.html'" class="menu-button" style="padding: 5px 10px;">
+                    <span class="menu-icon">◀</span> 戻る
+                </button>
+                <h1 style="margin: 0; font-size: 1.2rem;">改善提案</h1>
+                <div style="width: 70px;"></div>
+            </div>
+        </header>
+
+        <main style="padding-top: 20px;">
+            <div id="auth-check" style="display: none; background: #fee2e2; padding: 10px; border-radius: 6px; color: #991b1b; margin-bottom: 15px;">
+                社員コードが設定されていません。トップページから社員コードを設定してください。
+            </div>
+
+            <div class="card">
+                <form id="proposal-form">
+                    <div class="form-group">
+                        <label>カテゴリー</label>
+                        <select id="proposal-category" required>
+                            <option value="業務効率化">業務効率化</option>
+                            <option value="職場環境">職場環境</option>
+                            <option value="システム要望">システム要望</option>
+                            <option value="その他">その他</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>タイトル</label>
+                        <input type="text" id="proposal-title" placeholder="提案の要約を入力してください" required>
+                    </div>
+                    <div class="form-group">
+                        <label>提案内容</label>
+                        <textarea id="proposal-content" placeholder="現状の課題と、改善アイデアを具体的に入力してください" required></textarea>
+                    </div>
+                    <div class="form-group" style="background: #f3f4f6; padding: 10px; border-radius: 6px;">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="proposal-anonymous">
+                            匿名で送信する（社員コードを記録しません）
+                        </label>
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="submitProposal()">提案を送信</button>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const gasUrl = localStorage.getItem('attendance_gas_url');
+        const employeeId = localStorage.getItem('attendance_employee_id');
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!gasUrl || !employeeId) {
+                document.getElementById('auth-check').style.display = 'block';
+                document.querySelector('.btn-primary').disabled = true;
+            }
+        });
+
+        async function submitProposal() {
+            const title = document.getElementById('proposal-title').value.trim();
+            const content = document.getElementById('proposal-content').value.trim();
+            const category = document.getElementById('proposal-category').value;
+            const isAnonymous = document.getElementById('proposal-anonymous').checked;
+
+            if (!title || !content) {
+                alert('タイトルと提案内容を入力してください。');
+                return;
+            }
+
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = "送信中...";
+
+            try {
+                const response = await fetch(gasUrl, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        action: 'submitProposal',
+                        employeeId: employeeId,
+                        title: title,
+                        content: content,
+                        category: category,
+                        isAnonymous: isAnonymous
+                    })
+                });
+                const result = await response.json();
+                if (result.result === 'success') {
+                    alert('改善提案を送信しました。貴重なご意見ありがとうございます。');
+                    document.getElementById('proposal-form').reset();
+                    window.location.href = 'index.html';
+                } else {
+                    alert('送信エラー: ' + result.message);
+                    btn.disabled = false;
+                    btn.textContent = "提案を送信";
+                }
+            } catch(e) {
+                alert('通信エラーが発生しました');
+                btn.disabled = false;
+                btn.textContent = "提案を送信";
+            }
+        }
+    </script>
+</body>
+</html>
