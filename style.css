@@ -372,6 +372,51 @@ details summary {
     flex-direction: column;
 }
 
+/* Sidebar Accordion Menu */
+.menu-group {
+    margin-bottom: 5px;
+}
+
+.menu-group-title {
+    font-size: 0.85rem;
+    color: #6b7280;
+    padding: 10px 15px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 6px;
+    transition: background-color 0.2s, color 0.2s;
+    user-select: none;
+}
+
+.menu-group-title:hover {
+    background-color: #f3f4f6;
+    color: #374151;
+}
+
+.menu-group-items {
+    display: flex;
+    flex-direction: column;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.menu-group.active .menu-group-items {
+    max-height: 500px;
+}
+
+.menu-group .toggle-icon {
+    font-size: 0.6rem;
+    transition: transform 0.3s ease;
+}
+
+.menu-group.active .toggle-icon {
+    transform: rotate(180deg);
+}
+
 .menu-link {
     padding: 15px 20px;
     text-decoration: none;

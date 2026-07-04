@@ -756,3 +756,11 @@ function escBanner(str) {
     d.textContent = str;
     return d.innerHTML;
 }
+
+// サイドメニューのアコーディオン開閉
+function toggleMenuGroup(element) {
+    const group = element.closest('.menu-group');
+    if (group) {
+        group.classList.toggle('active');
+    }
+}
