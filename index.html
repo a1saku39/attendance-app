@@ -35,17 +35,9 @@
                 <button id="closeMenuBtn" class="close-menu-btn">×</button>
             </div>
             <div class="menu-links">
+                <div class="menu-group-title" style="font-size: 0.75rem; color: #9ca3af; padding: 10px 15px 5px; font-weight: bold;">勤怠・業務</div>
                 <a href="MonthlyReview.html" class="menu-link">
                     <span class="icon">📋</span> 月次確認・承認
-                </a>
-                <a href="ManagerDashboard.html" class="menu-link">
-                    <span class="icon">👑</span> 承認ダッシュボード
-                </a>
-                <a href="AdminDashboard.html" id="menu-admin-dashboard" class="menu-link admin-only" style="color: #dc2626; font-weight: bold; display: none;">
-                    <span class="icon">📈</span> 総合ダッシュボード
-                </a>
-                <a href="SearchData.html" class="menu-link" style="color: #4b5563;">
-                    <span class="icon">🔍</span> 打刻データ検索
                 </a>
                 <a href="SearchData.html" class="menu-link" style="color: #4b5563;">
                     <span class="icon">🔍</span> 打刻データ検索
@@ -53,22 +45,22 @@
                 <a href="Calendar.html" class="menu-link">
                     <span class="icon">📅</span> カレンダー確認
                 </a>
+                <a href="DailyReport.html" class="menu-link" style="color: #4b5563;">
+                    <span class="icon">📝</span> 日報
+                </a>
                 <!-- Timeline temporarily hidden
                 <a href="Timeline.html" class="menu-link">
                     <span class="icon">⏱️</span> タイムライン
                 </a>
                 -->
-                <a href="HolidaySettings.html" class="menu-link" style="color: #4b5563;">
-                    <span class="icon">📅</span> 年間休日設定
-                </a>
+
+                <div class="menu-group-title" style="font-size: 0.75rem; color: #9ca3af; padding: 10px 15px 5px; font-weight: bold;">社内コミュニケーション</div>
                 <a href="Board.html" class="menu-link" style="color: #4b5563;">
                     <span class="icon">📌</span> 掲示板・お知らせ
                 </a>
-                <a href="UserGuide.html" class="menu-link" style="color: #4b5563;">
-                    <span class="icon">📖</span> 使い方・更新情報
-                </a>
-                <a href="Feedback.html" class="menu-link" style="color: #4b5563;">
-                    <span class="icon">💡</span> 要望・フィードバック (旧)
+                <a href="Message.html" class="menu-link" style="color: #4b5563; position: relative;">
+                    <span class="icon">✉️</span> 個別メッセージ
+                    <span id="msgUnreadBadge" class="menu-badge" style="display:none;">0</span>
                 </a>
                 <a href="Survey.html" class="menu-link" style="color: #2563eb; font-weight: bold;">
                     <span class="icon">📝</span> 社内アンケート
@@ -76,18 +68,30 @@
                 <a href="Proposal.html" class="menu-link" style="color: #2563eb; font-weight: bold;">
                     <span class="icon">💡</span> 改善提案
                 </a>
+                <a href="Feedback.html" class="menu-link" style="color: #4b5563;">
+                    <span class="icon">💡</span> 要望・フィードバック (旧)
+                </a>
+
+                <div class="menu-group-title" style="font-size: 0.75rem; color: #9ca3af; padding: 10px 15px 5px; font-weight: bold;">管理・設定</div>
+                <a href="ManagerDashboard.html" class="menu-link">
+                    <span class="icon">👑</span> 承認ダッシュボード
+                </a>
+                <a href="AdminDashboard.html" id="menu-admin-dashboard" class="menu-link admin-only" style="color: #dc2626; font-weight: bold; display: none;">
+                    <span class="icon">📈</span> 総合ダッシュボード
+                </a>
+                <a href="HolidaySettings.html" class="menu-link" style="color: #4b5563;">
+                    <span class="icon">📅</span> 年間休日設定
+                </a>
                 <a href="SurveyAdmin.html" id="menu-survey-admin" class="menu-link admin-only" style="color: #dc2626; font-weight: bold; display: none;">
                     <span class="icon">⚙️</span> アンケート管理
                 </a>
                 <a href="ProposalAdmin.html" id="menu-proposal-admin" class="menu-link admin-only" style="color: #dc2626; font-weight: bold; display: none;">
                     <span class="icon">⚙️</span> 改善提案管理
                 </a>
-                <a href="Message.html" class="menu-link" style="color: #4b5563; position: relative;">
-                    <span class="icon">✉️</span> 個別メッセージ
-                    <span id="msgUnreadBadge" class="menu-badge" style="display:none;">0</span>
-                </a>
-                <a href="DailyReport.html" class="menu-link" style="color: #4b5563;">
-                    <span class="icon">📝</span> 日報
+
+                <div class="menu-group-title" style="font-size: 0.75rem; color: #9ca3af; padding: 10px 15px 5px; font-weight: bold;">サポート</div>
+                <a href="UserGuide.html" class="menu-link" style="color: #4b5563;">
+                    <span class="icon">📖</span> 使い方・更新情報
                 </a>
                 <!-- 社内チャット：将来的に使用予定（現在は無効）
                 <a href="https://chatapp-v1-1-0wbf.onrender.com/" class="menu-link chat-link">

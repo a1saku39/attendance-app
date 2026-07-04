@@ -915,12 +915,12 @@ function saveHolidaySettings(e) {
 function getVersionInfo() {
   try {
     var versionInfo = {
-      version: 'v3.5',
-      releaseDate: '2026-03-02',
+      version: 'v3.6',
+      releaseDate: '2026-07-04',
       updateNotes: [
-        '「個人メッセージ」を「個別メッセージ」に名称変更',
-        '個別メッセージに送信範囲の選択（個人・グループ・全員）を追加',
-        'メッセージ送信のグループ化（部署単位の一斉送信）に対応'
+        'メニュー画面の整理',
+        'サイドバーメニューを分かりやすくカテゴリごとにグループ化',
+        '重複していた「打刻データ検索」項目を整理'
       ]
     };
     

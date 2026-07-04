@@ -522,7 +522,7 @@ async function checkVersion() {
     const gasUrl = localStorage.getItem('attendance_gas_url');
     if (!gasUrl) return; // URLが設定されていない場合はスキップ
 
-    const currentVersion = localStorage.getItem('attendance_app_version') || 'v3.2';
+    const currentVersion = localStorage.getItem('attendance_app_version') || 'v3.6';
 
     // まずlocalStorageのバージョンを即表示
     updateMenuVersion(currentVersion);
