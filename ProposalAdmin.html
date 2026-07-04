@@ -72,6 +72,12 @@
                             <canvas id="categoryChart"></canvas>
                         </div>
                     </div>
+                    <div class="chart-box">
+                        <h3 style="margin-top: 0; font-size: 1rem;">拠点別分布</h3>
+                        <div class="chart-container">
+                            <canvas id="locationChart"></canvas>
+                        </div>
+                    </div>
                 </div>
 
                 <table id="proposals-table">
@@ -81,7 +87,7 @@
                             <th>カテゴリ</th>
                             <th>タイトル</th>
                             <th>内容</th>
-                            <th>社員/匿名</th>
+                            <th>社員コード</th>
                             <th>状態</th>
                             <th>操作</th>
                         </tr>
@@ -337,6 +343,10 @@
             const statusCounts = { '受付': 0, '検討中': 0, '採用': 0, '実施済み': 0, '見送り': 0 };
             // カテゴリ集計
             const categoryCounts = {};
+            // 拠点集計
+            const targetLocations = ['札幌', '北東北', '仙台', '東京', '静岡', '名古屋', '新潟', '長野', '金沢', '大阪', '京都', '中四国', '福岡'];
+            const locationCounts = {};
+            targetLocations.forEach(loc => locationCounts[loc] = 0);
 
             currentProposals.forEach(p => {
                 if (statusCounts[p.status] !== undefined) {
@@ -347,6 +357,10 @@
                 
                 const cat = p.category || 'その他';
                 categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+
+                let loc = p.department || '未設定';
+                loc = loc.replace(/支店|営業所/g, '');
+                locationCounts[loc] = (locationCounts[loc] || 0) + 1;
             });
 
             const bgColors = ['#3b82f6', '#f59e0b', '#10b981', '#059669', '#ef4444', '#8b5cf6', '#ec4899'];
@@ -384,6 +398,29 @@
                 options: { responsive: true, maintainAspectRatio: false }
             });
             chartInstances.push(categoryChart);
+
+            // 拠点グラフ描画
+            const ctxLocation = document.getElementById('locationChart').getContext('2d');
+            const locationLabels = Object.keys(locationCounts);
+            const locationData = Object.values(locationCounts);
+            const locationChart = new Chart(ctxLocation, {
+                type: 'bar',
+                data: {
+                    labels: locationLabels,
+                    datasets: [{
+                        label: '提案数',
+                        data: locationData,
+                        backgroundColor: bgColors.slice(0, locationLabels.length)
+                    }]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                }
+            });
+            chartInstances.push(locationChart);
         }
     </script>
 </body>

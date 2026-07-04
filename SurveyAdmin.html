@@ -147,7 +147,17 @@
             addQuestion();
         });
 
-        // タブ切り替え
+        // 日付フォーマット関数
+        function formatDateString(str) {
+            if (!str) return '';
+            const d = new Date(str);
+            if (isNaN(d.getTime())) return str;
+            return d.getFullYear() + '/' + 
+                   String(d.getMonth() + 1).padStart(2, '0') + '/' + 
+                   String(d.getDate()).padStart(2, '0');
+        }
+
+        // === タブ切り替え ===
         function switchTab(tabId) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -284,8 +294,8 @@
                 tr.innerHTML = `
                     <td style="color: ${statusColor}; font-weight: bold;">${s.status}</td>
                     <td>${s.title}</td>
-                    <td>${s.startDate}</td>
-                    <td>${s.endDate}</td>
+                    <td>${formatDateString(s.startDate)}</td>
+                    <td>${formatDateString(s.endDate)}</td>
                     <td>${ansCount}件</td>
                     <td>
                         <button class="btn btn-primary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="viewSurveyDetail('${s.id}')">集計</button>

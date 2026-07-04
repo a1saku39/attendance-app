@@ -3274,8 +3274,8 @@ function submitProposal(e) {
     
     sheet.appendRow([
       proposalId,
-      payload.isAnonymous ? '匿名' : payload.employeeId,
-      payload.isAnonymous,
+      payload.employeeId,
+      false, // 常に匿名フラグはfalse
       payload.title,
       payload.content,
       payload.category,
@@ -3337,14 +3337,29 @@ function saveSurvey(e) {
 function getProposalsAdmin(e) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
+    
+    // 社員マスタから部署(拠点)情報を取得
+    var masterSheet = ss.getSheetByName('社員マスタ');
+    var employeeDepts = {};
+    if (masterSheet) {
+      var masterData = masterSheet.getDataRange().getValues();
+      for (var j = 1; j < masterData.length; j++) {
+        var empId = String(masterData[j][0]).trim();
+        var dept = masterData[j][2] || '未設定';
+        employeeDepts[empId] = dept;
+      }
+    }
+    
     var sheet = ss.getSheetByName('Proposals');
     var data = sheet.getDataRange().getValues();
     var proposals = [];
     var headers = data[0];
     for (var i = 1; i < data.length; i++) {
+      var empId = String(data[i][headers.indexOf('社員ID')]).trim();
       proposals.push({
         id: data[i][headers.indexOf('提案ID')],
-        employeeId: data[i][headers.indexOf('社員ID')],
+        employeeId: empId,
+        department: employeeDepts[empId] || '未設定',
         title: data[i][headers.indexOf('タイトル')],
         content: data[i][headers.indexOf('内容')],
         category: data[i][headers.indexOf('カテゴリー')],

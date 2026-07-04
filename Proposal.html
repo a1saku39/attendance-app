@@ -56,12 +56,7 @@
                         <label>提案内容</label>
                         <textarea id="proposal-content" placeholder="現状の課題と、改善アイデアを具体的に入力してください" required></textarea>
                     </div>
-                    <div class="form-group" style="background: #f3f4f6; padding: 10px; border-radius: 6px;">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="proposal-anonymous">
-                            匿名で送信する（社員コードを記録しません）
-                        </label>
-                    </div>
+
                     <button type="button" class="btn btn-primary" onclick="submitProposal()">提案を送信</button>
                 </form>
             </div>
@@ -83,7 +78,6 @@
             const title = document.getElementById('proposal-title').value.trim();
             const content = document.getElementById('proposal-content').value.trim();
             const category = document.getElementById('proposal-category').value;
-            const isAnonymous = document.getElementById('proposal-anonymous').checked;
 
             if (!title || !content) {
                 alert('タイトルと提案内容を入力してください。');
@@ -102,8 +96,7 @@
                         employeeId: employeeId,
                         title: title,
                         content: content,
-                        category: category,
-                        isAnonymous: isAnonymous
+                        category: category
                     })
                 });
                 const result = await response.json();
