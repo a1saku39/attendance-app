@@ -18,6 +18,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const compensatoryLeaveBtn = document.getElementById('compensatory-leave-btn');
     const cancelHolidayBtn = document.getElementById('cancel-holiday-btn');
 
+    // 代休選択モーダル用
+    const compSelectModal = document.getElementById('compensatory-select-modal');
+    const compSelect = document.getElementById('compensatory-select');
+    const confirmCompBtn = document.getElementById('confirm-compensatory-btn');
+    const cancelCompBtn = document.getElementById('cancel-compensatory-btn');
+    let currentUserCompLeaves = []; // 取得した代休データを保持
+
     // 設定のロード
     const savedGasUrl = localStorage.getItem('attendance_gas_url');
     const savedEmployeeId = localStorage.getItem('attendance_employee_id');
@@ -418,16 +425,142 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => holidayModal.style.display = 'none', 300);
         });
 
-        compensatoryLeaveBtn.addEventListener('click', () => {
-            const currentRemarks = remarksInput.value.trim();
-            const textToAdd = "【代休】";
-            if (!currentRemarks.includes(textToAdd)) {
-                remarksInput.value = textToAdd + (currentRemarks ? " " + currentRemarks : "");
+        compensatoryLeaveBtn.addEventListener('click', async () => {
+            const employeeId = employeeIdInput.value.trim();
+            const gasUrl = localStorage.getItem('attendance_gas_url');
+            
+            if (!employeeId || !gasUrl) {
+                showMessage('社員コードまたはGAS URLが設定されていません', 'error');
+                return;
             }
-            handleAttendance('holiday', 'compensatory');
+            
+            // holidayModalを閉じる
             holidayModal.classList.remove('active');
             setTimeout(() => holidayModal.style.display = 'none', 300);
+
+            showMessage('代休データを確認中...', 'success');
+            
+            try {
+                const response = await fetch(gasUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action: 'getCompensatoryLeaves',
+                        employeeId: employeeId
+                    })
+                });
+                const result = await response.json();
+                
+                if (result.result === 'success') {
+                    currentUserCompLeaves = result.data || [];
+                    const unacquiredLeaves = currentUserCompLeaves.filter(item => item.status === '未取得');
+                    
+                    if (unacquiredLeaves.length === 0) {
+                        showMessage('エラー: 未取得の代休がありません。代休を取得できません。', 'error');
+                        return;
+                    }
+                    
+                    // モーダルのセレクトボックスを構築
+                    if (compSelect) {
+                        compSelect.innerHTML = '';
+
+                        // 休日出勤日の古い順（時系列）に並び替え
+                        unacquiredLeaves.sort((a, b) => new Date(a.workedDate) - new Date(b.workedDate));
+
+                        unacquiredLeaves.forEach((item) => {
+                            const originalIdx = currentUserCompLeaves.indexOf(item);
+                            const option = document.createElement('option');
+                            option.value = originalIdx;
+                            let dDisplay = item.workedDate;
+                            try {
+                                const d = new Date(item.workedDate);
+                                dDisplay = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`;
+                            } catch(e){}
+                            option.textContent = `休日出勤: ${dDisplay}`;
+                            compSelect.appendChild(option);
+                        });
+                    }
+                    
+                    // モーダル表示
+                    if (compSelectModal) {
+                        compSelectModal.style.display = 'flex';
+                        setTimeout(() => compSelectModal.classList.add('active'), 10);
+                    }
+                } else {
+                    showMessage('代休データの取得に失敗しました', 'error');
+                }
+            } catch (error) {
+                console.error(error);
+                showMessage('通信エラーが発生しました', 'error');
+            }
         });
+
+        // 選択キャンセル
+        if (cancelCompBtn && compSelectModal) {
+            cancelCompBtn.addEventListener('click', () => {
+                compSelectModal.classList.remove('active');
+                setTimeout(() => compSelectModal.style.display = 'none', 300);
+            });
+        }
+        
+        // 選択確定
+        if (confirmCompBtn && compSelectModal) {
+            confirmCompBtn.addEventListener('click', async () => {
+                if (!compSelect) return;
+                const selectedIdx = parseInt(compSelect.value, 10);
+                if (isNaN(selectedIdx) || !currentUserCompLeaves[selectedIdx]) return;
+                
+                // モーダル閉じる
+                compSelectModal.classList.remove('active');
+                setTimeout(() => compSelectModal.style.display = 'none', 300);
+                
+                // データの更新
+                const item = currentUserCompLeaves[selectedIdx];
+                item.status = '取得済';
+                const now = new Date();
+                item.takenDate = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                
+                const employeeId = employeeIdInput.value.trim();
+                const gasUrl = localStorage.getItem('attendance_gas_url');
+                
+                try {
+                    showMessage('代休を更新中...', 'success');
+                    const updateRes = await fetch(gasUrl, {
+                        method: 'POST',
+                        redirect: 'follow',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({
+                            action: 'saveCompensatoryLeave',
+                            employeeId: employeeId,
+                            data: currentUserCompLeaves
+                        })
+                    });
+                    const updateData = await updateRes.json();
+                    
+                    if (updateData.result === 'success') {
+                        // GAS更新完了後、実際の打刻記録へ
+                        const currentRemarks = remarksInput.value.trim();
+                        let dDisplay = item.workedDate;
+                        try {
+                            const d = new Date(item.workedDate);
+                            dDisplay = `${d.getMonth()+1}/${d.getDate()}`;
+                        } catch(e){}
+                        
+                        const textToAdd = `【代休(${dDisplay}出勤分)】`;
+                        if (!currentRemarks.includes("【代休")) {
+                            remarksInput.value = textToAdd + (currentRemarks ? " " + currentRemarks : "");
+                        }
+                        
+                        handleAttendance('holiday', 'compensatory');
+                    } else {
+                        showMessage('代休の更新に失敗しました: ' + updateData.message, 'error');
+                    }
+                } catch(err) {
+                    console.error(err);
+                    showMessage('代休の更新通信エラーが発生しました', 'error');
+                }
+            });
+        }
     }
 
     // --- 定期的な位置情報記録 (無効化されています) ---

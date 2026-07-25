@@ -136,6 +136,12 @@ function doPost(e) {
        debugSheet.appendRow([new Date(), 'API実行: setupSurveySheets']);
        var res = setupSurveySheets();
        return ContentService.createTextOutput(JSON.stringify({result: 'success', message: res})).setMimeType(ContentService.MimeType.JSON);
+    } else if (action === 'getCompensatoryLeaves') {
+       debugSheet.appendRow([new Date(), 'API実行: getCompensatoryLeaves']);
+       return getCompensatoryLeaves(e);
+    } else if (action === 'saveCompensatoryLeave') {
+       debugSheet.appendRow([new Date(), 'API実行: saveCompensatoryLeave']);
+       return saveCompensatoryLeave(e);
     }
     
     // 以下、通常の打刻処理（action が 'in'、'out'、'location' の場合のみ）
@@ -915,12 +921,12 @@ function saveHolidaySettings(e) {
 function getVersionInfo() {
   try {
     var versionInfo = {
-      version: 'v3.6',
-      releaseDate: '2026-07-04',
+      version: 'v3.7',
+      releaseDate: '2026-07-25',
       updateNotes: [
-        'メニュー画面の整理',
-        'サイドバーメニューを分かりやすくカテゴリごとにグループ化',
-        '重複していた「打刻データ検索」項目を整理'
+        '代休管理機能の追加',
+        '休日に出勤した日を登録し、未取得の代休を管理できるようになりました',
+        'サイドバーメニューに「代休管理」を追加しました'
       ]
     };
     
@@ -3761,6 +3767,80 @@ function analyzeProposalAI(e) {
     
     return ContentService.createTextOutput(JSON.stringify({
       result: 'success', category: resultData.category, advice: resultData.advice
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'error', message: error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// === 代休管理用API ===
+function getCompensatoryLeaves(e) {
+  try {
+    var payload = JSON.parse(e.postData.contents);
+    var employeeId = payload.employeeId;
+    if (!employeeId) throw new Error("社員コードが指定されていません");
+    
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var masterSheet = ss.getSheetByName('社員マスタ');
+    if (!masterSheet) throw new Error("社員マスタシートが見つかりません");
+    
+    var data = masterSheet.getDataRange().getValues();
+    var leaves = [];
+    
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === String(employeeId).trim()) {
+        var cellData = String(data[i][9] || "").trim(); // J列 = インデックス9
+        if (cellData) {
+          try {
+            leaves = JSON.parse(cellData);
+          } catch(ex) {
+            // 解析エラー時は無視
+          }
+        }
+        break;
+      }
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'success', data: leaves
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'error', message: error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function saveCompensatoryLeave(e) {
+  try {
+    var payload = JSON.parse(e.postData.contents);
+    var employeeId = payload.employeeId;
+    var leaveData = payload.data;
+    if (!employeeId || !leaveData) throw new Error("パラメータが不正です");
+    
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var masterSheet = ss.getSheetByName('社員マスタ');
+    if (!masterSheet) throw new Error("社員マスタシートが見つかりません");
+    
+    var data = masterSheet.getDataRange().getValues();
+    var found = false;
+    
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === String(employeeId).trim()) {
+        masterSheet.getRange(i + 1, 10).setValue(JSON.stringify(leaveData)); // J列は10列目
+        found = true;
+        break;
+      }
+    }
+    
+    if (!found) throw new Error("該当する社員が見つかりません");
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      result: 'success'
     })).setMimeType(ContentService.MimeType.JSON);
     
   } catch (error) {

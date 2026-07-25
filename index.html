@@ -53,6 +53,9 @@
                         <a href="DailyReport.html" class="menu-link" style="color: #4b5563;">
                             <span class="icon">📝</span> 日報
                         </a>
+                        <a href="CompensatoryLeave.html" class="menu-link" style="color: #4b5563;">
+                            <span class="icon">🏖️</span> 代休管理
+                        </a>
                         <!-- Timeline temporarily hidden
                         <a href="Timeline.html" class="menu-link">
                             <span class="icon">⏱️</span> タイムライン
@@ -192,6 +195,23 @@
                         <button id="paid-leave-btn" class="modal-btn primary">有給休暇</button>
                         <button id="compensatory-leave-btn" class="modal-btn secondary">代休</button>
                         <button id="cancel-holiday-btn" class="modal-btn cancel">キャンセル</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Compensatory Leave Select Modal -->
+            <div id="compensatory-select-modal" class="modal-overlay" style="display: none;">
+                <div class="modal-content">
+                    <h3>代休を選択してください</h3>
+                    <div style="margin: 15px 0; text-align: left;">
+                        <label for="compensatory-select" style="display:block; margin-bottom: 5px; font-weight: bold; color: #374151;">未取得の代休</label>
+                        <select id="compensatory-select" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #d1d5db; font-size: 1rem;">
+                            <!-- JSで生成 -->
+                        </select>
+                    </div>
+                    <div class="modal-actions">
+                        <button id="confirm-compensatory-btn" class="modal-btn primary">確定</button>
+                        <button id="cancel-compensatory-btn" class="modal-btn cancel">キャンセル</button>
                     </div>
                 </div>
             </div>
