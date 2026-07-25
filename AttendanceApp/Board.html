@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>掲示板・お知らせ - 勤怠管理アプリ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 15px;
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            opacity: 0.9;
+            transition: opacity 0.2s;
+        }
+
+        .back-link:hover {
+            opacity: 1;
+        }
+
+        .header {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 28px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .admin-section {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            border: 2px solid #667eea;
+        }
+
+        .admin-toggle {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: opacity 0.2s;
+        }
+
+        .admin-toggle:hover {
+            opacity: 0.9;
+        }
+
+        .admin-form {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .admin-form.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        input,
+        textarea,
+        select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 15px;
+            font-family: inherit;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .btn-post {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-post:hover {
+            opacity: 0.9;
+        }
+
+        .posts-container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .post-card {
+            border: 2px solid #e0e0e0;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: all 0.3s;
+        }
+
+        .post-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+        }
+
+        .post-card.important {
+            border-color: #ef4444;
+            background: #fef2f2;
+        }
+
+        .post-card.update {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+
+        .post-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .post-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+            flex: 1;
+        }
+
+        .post-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-important {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .badge-update {
+            background: #dbeafe;
+            color: #2563eb;
+        }
+
+        .badge-info {
+            background: #e0e7ff;
+            color: #4f46e5;
+        }
+
+        .post-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .post-content {
+            color: #555;
+            line-height: 1.8;
+            white-space: pre-wrap;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .message {
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .header,
+            .admin-section,
+            .posts-container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 22px;
+            }
+
+            .post-card {
+                padding: 15px;
+            }
+
+            .post-title {
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← メニューへ戻る</a>
+
+        <div class="header">
+            <h1>📌 掲示板・お知らせ</h1>
+            <p class="subtitle">重要なお知らせやバージョンアップ情報をご確認ください</p>
+        </div>
+
+        <div id="messageArea"></div>
+
+        <!-- 管理者用投稿セクション -->
+        <div class="admin-section">
+            <button class="admin-toggle" onclick="toggleAdminForm()">
+                👑 管理者用：お知らせを投稿する
+            </button>
+            <div id="adminForm" class="admin-form">
+                <div class="form-group">
+                    <label for="postType">種類</label>
+                    <select id="postType">
+                        <option value="info">お知らせ</option>
+                        <option value="update">バージョンアップ</option>
+                        <option value="important">重要</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="postTitle">タイトル</label>
+                    <input type="text" id="postTitle" placeholder="例: v3.6 リリースのお知らせ">
+                </div>
+                <div class="form-group">
+                    <label for="postContent">内容</label>
+                    <textarea id="postContent" placeholder="お知らせの内容を入力してください"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="postAuthor">投稿者名</label>
+                    <input type="text" id="postAuthor" placeholder="例: システム管理者">
+                </div>
+                <button class="btn-post" onclick="submitPost()">投稿する</button>
+            </div>
+        </div>
+
+        <!-- 投稿一覧 -->
+        <div class="posts-container">
+            <h2 style="margin-bottom: 20px; color: #333;">お知らせ一覧</h2>
+            <div id="postsArea">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    読み込み中...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let adminFormVisible = false;
+
+        window.onload = function () {
+            loadPosts();
+        };
+
+        function toggleAdminForm() {
+            adminFormVisible = !adminFormVisible;
+            const form = document.getElementById('adminForm');
+            form.classList.toggle('active', adminFormVisible);
+        }
+
+        async function loadPosts() {
+            const gasUrl = localStorage.getItem('attendance_gas_url');
+            if (!gasUrl) {
+                document.getElementById('postsArea').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⚠️</div>
+                        <p>GAS URLが設定されていません。<br>メイン画面の設定から登録してください。</p>
+                    </div>
+                `;
+                return;
+            }
+
+            try {
+                const response = await fetch(gasUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'getBoardPosts' })
+                });
+
+                const data = await response.json();
+
+                if (data.result === 'success') {
+                    displayPosts(data.posts || []);
+                } else {
+                    showMessage('error', 'データの取得に失敗しました: ' + data.message);
+                    document.getElementById('postsArea').innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">❌</div>
+                            <p>お知らせの読み込みに失敗しました</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('error', '通信エラーが発生しました');
+                document.getElementById('postsArea').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">❌</div>
+                        <p>通信エラーが発生しました</p>
+                    </div>
+                `;
+            }
+        }
+
+        function displayPosts(posts) {
+            const container = document.getElementById('postsArea');
+
+            if (posts.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <p>まだお知らせはありません</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            posts.forEach(post => {
+                const typeClass = post.type === 'important' ? 'important' :
+                    post.type === 'update' ? 'update' : '';
+                const badgeClass = post.type === 'important' ? 'badge-important' :
+                    post.type === 'update' ? 'badge-update' : 'badge-info';
+                const badgeText = post.type === 'important' ? '重要' :
+                    post.type === 'update' ? 'バージョンアップ' : 'お知らせ';
+
+                html += `
+                    <div class="post-card ${typeClass}">
+                        <div class="post-header">
+                            <div class="post-title">${escapeHtml(post.title)}</div>
+                            <span class="post-badge ${badgeClass}">${badgeText}</span>
+                        </div>
+                        <div class="post-meta">
+                            <span>📅 ${post.date}</span>
+                            <span>👤 ${escapeHtml(post.author)}</span>
+                        </div>
+                        <div class="post-content">${escapeHtml(post.content)}</div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        async function submitPost() {
+            const type = document.getElementById('postType').value;
+            const title = document.getElementById('postTitle').value.trim();
+            const content = document.getElementById('postContent').value.trim();
+            const author = document.getElementById('postAuthor').value.trim();
+
+            if (!title || !content || !author) {
+                showMessage('error', 'すべての項目を入力してください');
+                return;
+            }
+
+            const gasUrl = localStorage.getItem('attendance_gas_url');
+            if (!gasUrl) {
+                showMessage('error', 'GAS URLが設定されていません');
+                return;
+            }
+
+            try {
+                const response = await fetch(gasUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action: 'postBoardMessage',
+                        type: type,
+                        title: title,
+                        content: content,
+                        author: author
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.result === 'success') {
+                    showMessage('success', '投稿しました！');
+                    // フォームをクリア
+                    document.getElementById('postTitle').value = '';
+                    document.getElementById('postContent').value = '';
+                    document.getElementById('postAuthor').value = '';
+                    // 投稿一覧を再読み込み
+                    loadPosts();
+                    // フォームを閉じる
+                    toggleAdminForm();
+                } else {
+                    showMessage('error', '投稿に失敗しました: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('error', '通信エラーが発生しました');
+            }
+        }
+
+        function showMessage(type, msg) {
+            const messageArea = document.getElementById('messageArea');
+            messageArea.innerHTML = `<div class="message ${type}">${msg}</div>`;
+            setTimeout(() => {
+                messageArea.innerHTML = '';
+            }, 5000);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+
+</html>

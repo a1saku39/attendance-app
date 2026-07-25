@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>使い方・更新情報 - 勤怠管理アプリ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 15px;
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            opacity: 0.9;
+            transition: opacity 0.2s;
+        }
+
+        .back-link:hover {
+            opacity: 1;
+        }
+
+        .header {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 28px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .content-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .version-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            color: #333;
+            font-size: 22px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        h3 {
+            color: #667eea;
+            font-size: 18px;
+            margin-top: 25px;
+            margin-bottom: 12px;
+        }
+
+        h4 {
+            color: #555;
+            font-size: 16px;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        p {
+            line-height: 1.8;
+            margin-bottom: 15px;
+            color: #555;
+        }
+
+        ul,
+        ol {
+            margin-left: 20px;
+            margin-bottom: 15px;
+            line-height: 1.8;
+        }
+
+        li {
+            margin-bottom: 8px;
+            color: #555;
+        }
+
+        .update-note {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .update-note h4 {
+            color: #1976d2;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .warning-box h4 {
+            color: #856404;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+
+        .success-box {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .code-block {
+            background: #f5f5f5;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .step-number {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 28px;
+            font-weight: 600;
+            margin-right: 8px;
+        }
+
+        .tab-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .header,
+            .content-card {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 22px;
+            }
+
+            h2 {
+                font-size: 18px;
+            }
+
+            .tab-container {
+                overflow-x: auto;
+                flex-wrap: nowrap;
+            }
+
+            .tab {
+                padding: 10px 16px;
+                font-size: 14px;
+                white-space: nowrap;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← メニューへ戻る</a>
+
+        <div class="header">
+            <h1>📖 使い方・更新情報</h1>
+            <p class="subtitle">勤怠管理アプリの使い方とバージョン情報</p>
+        </div>
+
+        <div class="content-card">
+            <div class="tab-container">
+                <button class="tab active" onclick="switchTab('updates')">📢 更新情報</button>
+                <button class="tab" onclick="switchTab('guide')">📝 使い方</button>
+                <button class="tab" onclick="switchTab('troubleshoot')">🔧 トラブルシューティング</button>
+            </div>
+
+            <!-- 更新情報タブ -->
+            <div id="updates-content" class="tab-content active">
+                <div class="version-badge">最新バージョン: v3.6 (2026-07-04)</div>
+
+                <div class="update-note">
+                    <h4>🎉 v3.6 の新機能・修正内容</h4>
+                    <ul>
+                        <li><strong>メニュー画面の整理</strong>
+                            <ul>
+                                <li>サイドバーメニューを分かりやすくカテゴリごとにグループ化しました</li>
+                                <li>重複していた「打刻データ検索」項目を整理しました</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="update-note">
+                    <h4>v3.5 の新機能・修正内容</h4>
+                    <ul>
+                        <li>「個人メッセージ」を「個別メッセージ」に名称変更</li>
+                        <li>個別メッセージに送信範囲の選択（個人・グループ・全員）を追加</li>
+                        <li>メッセージ送信のグループ化（部署単位の一斉送信）に対応</li>
+                    </ul>
+                </div>
+
+                <div class="update-note">
+                    <h4>v3.3 の新機能・修正内容</h4>
+                    <ul>
+                        <li><strong>日を跨いだ勤務時間計算の修正</strong>
+                            <ul>
+                                <li>例: 08:00出勤、翌日00:40退勤 → 正しく <strong>16:40</strong> と表示されます</li>
+                                <li>従来はマイナス表示されていた問題を解決</li>
+                            </ul>
+                        </li>
+                        <li><strong>自動バージョン通知機能</strong>
+                            <ul>
+                                <li>アプリ起動時に新しいバージョンがあると自動で通知</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="warning-box">
+                    <h4>⚠️ 重要なお知らせ</h4>
+                    <p>既存のデータで勤務時間がマイナス表示されている場合は、以下のいずれかの対応が必要です：</p>
+                    <ul>
+                        <li>該当日の打刻を再度行う（推奨）</li>
+                        <li>管理者にスプレッドシートの修正を依頼する</li>
+                    </ul>
+                </div>
+
+                <h3>過去のバージョン</h3>
+                <h4>v3.2 以前</h4>
+                <ul>
+                    <li>デバッグログ出力の最適化</li>
+                    <li>月次承認機能の実装</li>
+                    <li>管理者ダッシュボードの追加</li>
+                    <li>カレンダー表示機能</li>
+                    <li>年間休日設定機能</li>
+                </ul>
+            </div>
+
+            <!-- 使い方タブ -->
+            <div id="guide-content" class="tab-content">
+                <h2>基本的な使い方</h2>
+
+                <h3><span class="step-number">1</span>出勤・退勤の打刻</h3>
+                <ol>
+                    <li>社員コードを入力します</li>
+                    <li>「出勤」または「退勤」ボタンをクリック</li>
+                    <li>打刻時刻が表示されたら完了です</li>
+                </ol>
+
+                <div class="success-box">
+                    <strong>💡 ポイント:</strong> 社員コードは一度入力すると自動的に保存されます
+                </div>
+
+                <h3><span class="step-number">2</span>日時を指定して打刻</h3>
+                <p>打刻を忘れた場合や修正が必要な場合：</p>
+                <ol>
+                    <li>「日時指定」欄で日付と時刻を入力</li>
+                    <li>「出勤」または「退勤」ボタンをクリック</li>
+                    <li>指定した日時で記録されます</li>
+                </ol>
+
+                <h3><span class="step-number">3</span>休日の登録</h3>
+                <ol>
+                    <li>日付を指定（または当日）</li>
+                    <li>「休日」ボタンをクリック</li>
+                    <li>「有給休暇」または「代休」を選択</li>
+                </ol>
+
+                <h3><span class="step-number">4</span>備考の入力</h3>
+                <p>打刻時に備考を追加できます：</p>
+                <ul>
+                    <li>直行・直帰の記録</li>
+                    <li>外出・出張の記録</li>
+                    <li>その他特記事項</li>
+                </ul>
+
+                <h3><span class="step-number">5</span>月次確認・承認</h3>
+                <ol>
+                    <li>メニューから「月次確認・承認」を選択</li>
+                    <li>社員コードと年月を入力</li>
+                    <li>カレンダーで打刻状況を確認</li>
+                    <li>問題なければ「担当者印を押す」をクリック</li>
+                </ol>
+
+                <h3>管理者向け機能</h3>
+                <h4>管理者ダッシュボード</h4>
+                <ul>
+                    <li>部下の勤怠状況を一覧表示</li>
+                    <li>承認待ちの社員を確認</li>
+                    <li>承認印の押印</li>
+                    <li>詳細カレンダーの確認</li>
+                </ul>
+
+                <h4>年間休日設定</h4>
+                <ul>
+                    <li>祝日・会社休日の登録</li>
+                    <li>カレンダーへの自動反映</li>
+                    <li>営業日数の自動計算</li>
+                </ul>
+            </div>
+
+            <!-- トラブルシューティングタブ -->
+            <div id="troubleshoot-content" class="tab-content">
+                <h2>よくある問題と解決方法</h2>
+
+                <h3>❓ 打刻が記録されない</h3>
+                <h4>原因と対処法：</h4>
+                <ol>
+                    <li><strong>GAS URLが設定されていない</strong>
+                        <ul>
+                            <li>画面下部の「設定（管理者用）」を開く</li>
+                            <li>GAS WebアプリURLを入力して保存</li>
+                        </ul>
+                    </li>
+                    <li><strong>社員コードが未登録</strong>
+                        <ul>
+                            <li>スプレッドシートの「社員マスタ」シートを確認</li>
+                            <li>社員コード、氏名、部署が正しく登録されているか確認</li>
+                        </ul>
+                    </li>
+                    <li><strong>インターネット接続の問題</strong>
+                        <ul>
+                            <li>ネットワーク接続を確認</li>
+                            <li>ページを再読み込み（F5キー）</li>
+                        </ul>
+                    </li>
+                </ol>
+
+                <h3>❓ 勤務時間がマイナス表示される</h3>
+                <h4>v3.3で修正済みですが、既存データの場合：</h4>
+                <ol>
+                    <li><strong>再打刻する（推奨）</strong>
+                        <ul>
+                            <li>該当日の出勤または退勤を再度打刻</li>
+                            <li>自動的に正しい計算式が適用されます</li>
+                        </ul>
+                    </li>
+                    <li><strong>管理者に修正を依頼</strong>
+                        <ul>
+                            <li>スプレッドシートの計算式を手動で修正</li>
+                        </ul>
+                    </li>
+                </ol>
+
+                <h3>❓ 更新通知が表示されない</h3>
+                <ol>
+                    <li>ブラウザのキャッシュをクリア（Ctrl+Shift+Delete）</li>
+                    <li>ページを強制再読み込み（Ctrl+F5）</li>
+                    <li>LocalStorageをクリア：
+                        <ul>
+                            <li>F12キーで開発者ツールを開く</li>
+                            <li>「Application」→「Local Storage」</li>
+                            <li>「attendance_app_version」を削除</li>
+                        </ul>
+                    </li>
+                </ol>
+
+                <h3>❓ 承認印が押せない</h3>
+                <h4>確認事項：</h4>
+                <ul>
+                    <li><strong>本人確認の場合</strong>
+                        <ul>
+                            <li>自分の社員コードでログインしているか確認</li>
+                            <li>該当月の勤怠データが存在するか確認</li>
+                        </ul>
+                    </li>
+                    <li><strong>承認印の場合</strong>
+                        <ul>
+                            <li>社員マスタのE列（第1承認者）に自分の名前が登録されているか確認</li>
+                            <li>対象社員が本人確認を完了しているか確認</li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <h3>❓ スマホで使いにくい</h3>
+                <div class="success-box">
+                    <strong>💡 ヒント:</strong>
+                    <ul style="margin-top: 10px;">
+                        <li>ホーム画面に追加すると、アプリのように使えます</li>
+                        <li>Chromeの場合：メニュー → 「ホーム画面に追加」</li>
+                        <li>Safariの場合：共有ボタン → 「ホーム画面に追加」</li>
+                    </ul>
+                </div>
+
+                <h3>🆘 それでも解決しない場合</h3>
+                <p>以下の情報を添えて管理者にお問い合わせください：</p>
+                <ul>
+                    <li>発生した問題の詳細</li>
+                    <li>エラーメッセージ（表示されている場合）</li>
+                    <li>使用しているブラウザとバージョン</li>
+                    <li>打刻した日時と社員コード</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tabName) {
+            // すべてのタブとコンテンツを非アクティブに
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+
+            // 選択されたタブとコンテンツをアクティブに
+            event.target.classList.add('active');
+            document.getElementById(tabName + '-content').classList.add('active');
+        }
+    </script>
+</body>
+
+</html>

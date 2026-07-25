@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>月次勤怠カレンダー</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #f3f4f6;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: auto;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #4f46e5;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            opacity: 0.9;
+            transition: opacity 0.3s;
+        }
+
+        .back-link:hover {
+            opacity: 1;
+            text-decoration: underline;
+        }
+
+        .header {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        h1 {
+            color: #4f46e5;
+            font-size: 24px;
+            margin: 0;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .month-btn {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 10px 15px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .month-btn:hover {
+            background-color: #4338ca;
+        }
+
+        input[type="month"] {
+            padding: 10px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type="month"]:focus {
+            border-color: #4f46e5;
+        }
+
+        .message {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .message.error {
+            background-color: #fee2e2;
+            color: #ef4444;
+            border: 1px solid #fca5a5;
+        }
+
+        .message.loading {
+            background-color: #e0f2fe;
+            color: #0ea5e9;
+            border: 1px solid #7dd3fc;
+        }
+
+        .calendar-container {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 10px;
+        }
+
+        .calendar-header {
+            text-align: center;
+            font-weight: 700;
+            padding: 10px;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .calendar-day {
+            background: white;
+            border-radius: 12px;
+            padding: 10px;
+            min-height: 100px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e5e7eb;
+            transition: transform 0.2s;
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+        }
+
+        .calendar-day:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .calendar-day.empty {
+            background: transparent;
+            border: none;
+            box-shadow: none;
+        }
+
+        .calendar-day.today {
+            border: 2px solid #4f46e5;
+        }
+
+        .calendar-day.selected-day {
+            border: 2px solid #f59e0b;
+            background-color: #fffbeb;
+        }
+
+        .day-number {
+            font-weight: 700;
+            font-size: 16px;
+            margin-bottom: 8px;
+            color: #374151;
+        }
+
+        .day-number.sunday {
+            color: #ef4444;
+        }
+
+        .day-number.saturday {
+            color: #3b82f6;
+        }
+
+        .attendance-info {
+            flex-grow: 1;
+        }
+
+        .status-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 4px;
+            font-size: 14px;
+            color: #4b5563;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 6px;
+            flex-shrink: 0;
+        }
+
+        .status-dot.status-in {
+            background-color: #22c55e;
+        }
+
+        .status-dot.status-out {
+            background-color: #ef4444;
+        }
+
+        .time-text {
+            font-weight: 600;
+        }
+
+        .detail-card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            margin-top: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            display: none;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .detail-header {
+            font-size: 18px;
+            font-weight: 700;
+            color: #4f46e5;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f3f4f6;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 16px;
+        }
+
+        .detail-label {
+            color: #6b7280;
+            font-weight: 600;
+        }
+
+        .detail-value {
+            color: #1f2937;
+            font-weight: 700;
+            font-family: monospace;
+            font-size: 18px;
+        }
+
+        @media (max-width: 768px) {
+            .calendar-container {
+                padding: 10px;
+                overflow-x: auto;
+            }
+
+            .calendar-grid {
+                gap: 4px;
+                min-width: 300px;
+            }
+
+            .calendar-day {
+                padding: 4px;
+                min-height: 60px;
+                border-radius: 8px;
+            }
+
+            .day-number {
+                font-size: 12px;
+                margin-bottom: 2px;
+            }
+
+            .status-dot {
+                width: 10px;
+                height: 10px;
+            }
+
+            .header {
+                padding: 15px;
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .controls {
+                justify-content: space-between;
+                margin-top: 10px;
+            }
+
+            h1 {
+                font-size: 20px;
+                text-align: center;
+                margin-bottom: 5px;
+            }
+
+            .container {
+                padding: 10px;
+            }
+        }
+
+        input[type="time"],
+        textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 16px;
+            margin-top: 4px;
+        }
+
+        .edit-btn {
+            background-color: #f59e0b;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        .edit-btn:hover {
+            opacity: 0.9;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .save-btn {
+            background-color: #10b981;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            flex: 1;
+            font-weight: 600;
+        }
+
+        .cancel-btn {
+            background-color: #6b7280;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            flex: 1;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← 勤怠入力画面へ戻る</a>
+
+        <div class="header">
+            <h1>📅 月次勤怠カレンダー</h1>
+            <div class="controls">
+                <button class="month-btn" onclick="changeMonth(-1)">＜</button>
+                <input type="month" id="yearMonth" onchange="loadCalendarData()">
+                <button class="month-btn" onclick="changeMonth(1)">＞</button>
+            </div>
+        </div>
+
+        <div id="messageArea"></div>
+
+        <div class="calendar-container">
+            <div class="calendar-grid" id="calendarGrid">
+                <!-- JavaScriptで生成 -->
+            </div>
+        </div>
+
+        <!-- 詳細表示エリア -->
+        <div id="detailArea" class="detail-card">
+            <div class="detail-header" id="detailDate"></div>
+
+            <!-- 閲覧モード -->
+            <div id="viewMode">
+                <div class="detail-content">
+                    <div class="detail-row">
+                        <span class="detail-label">出勤時刻</span>
+                        <span class="detail-value" id="detailIn">--:--</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">退勤時刻</span>
+                        <span class="detail-value" id="detailOut">--:--</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">勤務時間</span>
+                        <span class="detail-value" id="detailWork">--:--</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">備考</span>
+                        <span class="detail-value" id="detailRemarks"
+                            style="font-size: 14px; font-family: sans-serif;">-</span>
+                    </div>
+                </div>
+                <button class="edit-btn" onclick="enableEditMode()">✏️ 打刻を修正する</button>
+            </div>
+
+            <!-- 編集モード -->
+            <div id="editMode" style="display: none;">
+                <input type="hidden" id="editDateStr">
+                <div style="margin-bottom: 15px;">
+                    <label class="detail-label">出勤時刻</label>
+                    <input type="time" id="editIn">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label class="detail-label">退勤時刻</label>
+                    <input type="time" id="editOut">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label class="detail-label">備考</label>
+                    <textarea id="editRemarks" rows="3"></textarea>
+                </div>
+                <div class="action-buttons">
+                    <button class="cancel-btn" onclick="cancelEdit()">キャンセル</button>
+                    <button class="save-btn" onclick="saveAttendance()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const GAS_URL = 'YOUR_GAS_WEB_APP_URL';
+        let currentAttendanceData = {};
+
+        window.onload = function () {
+            const today = new Date();
+            const yearMonth = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
+            document.getElementById('yearMonth').value = yearMonth;
+
+            const employeeId = localStorage.getItem('attendance_employee_id');
+            if (!employeeId) {
+                showMessage('error', '社員コードが登録されていません。トップページから一度打刻するか、社員コードを入力してください。');
+                return;
+            }
+
+            loadCalendarData();
+        };
+
+        function showMessage(type, text) {
+            const area = document.getElementById('messageArea');
+            area.innerHTML = `<div class="message ${type}">${text}</div>`;
+        }
+
+        function changeMonth(offset) {
+            const input = document.getElementById('yearMonth');
+            if (!input.value) return;
+
+            const [year, month] = input.value.split('-').map(Number);
+            const date = new Date(year, month - 1 + offset, 1);
+
+            const newYear = date.getFullYear();
+            const newMonth = String(date.getMonth() + 1).padStart(2, '0');
+
+            input.value = `${newYear}-${newMonth}`;
+            loadCalendarData();
+        }
+
+        function loadCalendarData() {
+            const yearMonth = document.getElementById('yearMonth').value;
+            const employeeId = localStorage.getItem('attendance_employee_id');
+            const gasUrl = localStorage.getItem('attendance_gas_url');
+
+            if (!gasUrl) {
+                showMessage('error', 'GAS WebアプリのURLが設定されていません。');
+                return;
+            }
+            if (!employeeId) {
+                showMessage('error', '社員コードが不明です。');
+                return;
+            }
+
+            showMessage('loading', 'データを読み込んでいます...');
+            const grid = document.getElementById('calendarGrid');
+            grid.innerHTML = '';
+            document.getElementById('detailArea').style.display = 'none';
+
+            fetch(gasUrl, {
+                method: 'POST',
+                redirect: 'follow',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({
+                    action: 'getPersonalMonthlyData',
+                    employeeId: employeeId,
+                    yearMonth: yearMonth
+                })
+            })
+                .then(response => response.text())
+                .then(text => {
+                    let data;
+                    try {
+                        data = JSON.parse(text);
+                    } catch (parseErr) {
+                        console.error('JSONパースエラー:', text.substring(0, 200));
+                        showMessage('error', 'サーバーの応答を解析できません。GASのデプロイを最新バージョンに更新してください。');
+                        return;
+                    }
+                    if (data.result === 'success') {
+                        console.log('取得データ:', data);
+                        console.log('休日データ:', data.holidays);
+                        document.getElementById('messageArea').innerHTML = '';
+                        currentAttendanceData = data.data || {};
+                        renderCalendar(yearMonth, data.data || {}, data.holidays || {});
+                    } else {
+                        showMessage('error', 'データ取得エラー: ' + (data.message || '不明なエラー'));
+                    }
+                })
+                .catch(err => {
+                    showMessage('error', '通信エラー: ' + err.message);
+                });
+        }
+
+        function renderCalendar(yearMonth, attendanceData, holidays) {
+            const grid = document.getElementById('calendarGrid');
+            const [year, month] = yearMonth.split('-').map(Number);
+
+            // holidaysが未定義の場合は空オブジェクトにする
+            if (!holidays) holidays = {};
+
+            const days = ['日', '月', '火', '水', '木', '金', '土'];
+            days.forEach((day, index) => {
+                const header = document.createElement('div');
+                header.className = 'calendar-header';
+                header.textContent = day;
+                if (index === 0) header.style.color = '#ef4444';
+                if (index === 6) header.style.color = '#3b82f6';
+                grid.appendChild(header);
+            });
+
+            const firstDay = new Date(year, month - 1, 1);
+            const lastDay = new Date(year, month, 0);
+            const startDayOfWeek = firstDay.getDay();
+            const daysInMonth = lastDay.getDate();
+
+            for (let i = 0; i < startDayOfWeek; i++) {
+                const empty = document.createElement('div');
+                empty.className = 'calendar-day empty';
+                grid.appendChild(empty);
+            }
+
+            const today = new Date();
+            const isCurrentMonth = today.getFullYear() === year && (today.getMonth() + 1) === month;
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                // YYYY/MM/DD (データアクセス用)
+                const dateStr = `${year}/${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}`;
+                // YYYY-MM-DD (休日マップ用)
+                const dateKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+                const dayData = attendanceData[dateStr];
+
+                const cell = document.createElement('div');
+                cell.className = 'calendar-day';
+
+                // Check for holiday from holidays map or attendance data
+                let holidayType = null;
+                try {
+                    if (holidays && typeof holidays === 'object' && dateKey in holidays) {
+                        holidayType = holidays[dateKey];
+                    }
+                } catch (e) { }
+
+                const isConfigHoliday = (holidayType === 'company' || holidayType === 'holiday');
+                const isAttendanceHoliday = dayData && (dayData.clockInType === '有給休暇' || dayData.clockInType === '代休');
+                const isHoliday = isConfigHoliday || isAttendanceHoliday;
+
+                cell.onclick = () => showDetail(dateStr, dayData, cell);
+
+                if (isCurrentMonth && day === today.getDate()) {
+                    cell.classList.add('today');
+                }
+
+                if (isHoliday) {
+                    if (isAttendanceHoliday) {
+                        // 有給休暇などは水色
+                        cell.style.background = 'linear-gradient(135deg, #38bdf8, #0ea5e9)';
+                    } else if (holidayType === 'company') {
+                        // 会社休日は青
+                        cell.style.background = '#dbeafe';
+                        cell.style.color = '#2563eb';
+                        cell.style.border = '1px solid #93c5fd';
+                    } else {
+                        // 祝日は赤
+                        cell.style.background = '#fee2e2';
+                        cell.style.color = '#dc2626';
+                        cell.style.border = '1px solid #fca5a5';
+                    }
+                }
+
+                const currentDayOfWeek = (startDayOfWeek + day - 1) % 7;
+                let dayClass = '';
+                if (currentDayOfWeek === 0) dayClass = 'sunday';
+                if (currentDayOfWeek === 6) dayClass = 'saturday';
+
+                // If holiday (attendance holiday gets white text)
+                let dayStyle = '';
+                if (isAttendanceHoliday) {
+                    dayStyle = 'style="color: white;"';
+                } else if (isConfigHoliday) {
+                    // Configured holidays retain their specific colors set above in cell style, so day number inherits
+                    // But we want to ensure consistency
+                    if (holidayType === 'company') dayStyle = 'style="color: #2563eb;"';
+                    else dayStyle = 'style="color: #dc2626;"';
+                }
+
+                let html = `<div class="day-number ${dayClass}" ${dayStyle}>${day}</div>`;
+
+                if (dayData) {
+                    if (isHoliday) {
+                        html += `
+                            <div class="attendance-info" style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%;">
+                                <div style="font-weight: bold; font-size: 14px; margin-bottom: 2px;">休日</div>
+                                <div style="font-size: 11px; opacity: 0.9;">${dayData.clockInType}</div>
+                            </div>`;
+                    } else {
+                        html += `<div class="attendance-info">`;
+                        if (dayData.clockInTime) {
+                            html += `
+                                <div class="status-row">
+                                    <span class="status-dot status-in"></span>
+                                    <span class="time-text">${dayData.clockInTime}</span>
+                                </div>`;
+                        }
+                        if (dayData.clockOutTime) {
+                            html += `
+                                <div class="status-row">
+                                    <span class="status-dot status-out"></span>
+                                    <span class="time-text">${dayData.clockOutTime}</span>
+                                </div>`;
+                        }
+                        html += `</div>`;
+                    }
+                }
+
+                cell.innerHTML = html;
+                grid.appendChild(cell);
+            }
+        }
+
+        function showDetail(dateStr, data, cellElement) {
+            document.querySelectorAll('.calendar-day').forEach(el => el.classList.remove('selected-day'));
+            cellElement.classList.add('selected-day');
+
+            // モードリセット（閲覧モードへ）
+            document.getElementById('viewMode').style.display = 'block';
+            document.getElementById('editMode').style.display = 'none';
+
+            const detailArea = document.getElementById('detailArea');
+            const [y, m, d] = dateStr.split('/');
+
+            const dateObj = new Date(y, m - 1, d);
+            const days = ['日', '月', '火', '水', '木', '金', '土'];
+            const dayOfWeek = days[dateObj.getDay()];
+            document.getElementById('detailDate').textContent = `${y}年${m}月${d}日 (${dayOfWeek})`;
+
+            // 編集用に日付を保持
+            document.getElementById('editDateStr').value = dateStr;
+
+            if (data) {
+                document.getElementById('detailIn').textContent = data.clockInTime || '--:--';
+                document.getElementById('detailOut').textContent = data.clockOutTime || '--:--';
+                document.getElementById('detailWork').textContent = data.workingHours || '--:--';
+                document.getElementById('detailRemarks').textContent = data.remarks || '-';
+
+                // 編集フォームにも値をセット
+                document.getElementById('editIn').value = data.clockInTime || '';
+                document.getElementById('editOut').value = data.clockOutTime || '';
+                document.getElementById('editRemarks').value = data.remarks || '';
+            } else {
+                document.getElementById('detailIn').textContent = '--:--';
+                document.getElementById('detailOut').textContent = '--:--';
+                document.getElementById('detailWork').textContent = '--:--';
+                document.getElementById('detailRemarks').textContent = '-';
+
+                // フォームクリア
+                document.getElementById('editIn').value = '';
+                document.getElementById('editOut').value = '';
+                document.getElementById('editRemarks').value = '';
+            }
+
+            detailArea.style.display = 'block';
+            detailArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function enableEditMode() {
+            document.getElementById('viewMode').style.display = 'none';
+            document.getElementById('editMode').style.display = 'block';
+        }
+
+        function cancelEdit() {
+            document.getElementById('editMode').style.display = 'none';
+            document.getElementById('viewMode').style.display = 'block';
+        }
+
+        function saveAttendance() {
+            const gasUrl = localStorage.getItem('attendance_gas_url');
+            const employeeId = localStorage.getItem('attendance_employee_id');
+            const dateStr = document.getElementById('editDateStr').value;
+            const clockIn = document.getElementById('editIn').value;
+            const clockOut = document.getElementById('editOut').value;
+            const remarks = document.getElementById('editRemarks').value;
+
+            if (!confirm(`${dateStr} の勤怠データを修正しますか？`)) return;
+
+            showMessage('loading', '保存中...');
+
+            const data = {
+                action: 'updateAttendance',
+                employeeId: employeeId,
+                date: dateStr,
+                clockInTime: clockIn,
+                clockOutTime: clockOut,
+                remarks: remarks
+            };
+
+            fetch(gasUrl, {
+                method: 'POST',
+                redirect: 'follow',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(data)
+            })
+                .then(response => response.text())
+                .then(text => {
+                    let result;
+                    try {
+                        result = JSON.parse(text);
+                    } catch (parseErr) {
+                        alert('サーバーの応答を解析できません。GASのデプロイを最新バージョンに更新してください。');
+                        document.getElementById('messageArea').innerHTML = '';
+                        return;
+                    }
+                    if (result.result === 'success') {
+                        alert('保存しました！');
+                        loadCalendarData();
+                    } else {
+                        alert('エラー: ' + result.message);
+                        document.getElementById('messageArea').innerHTML = '';
+                    }
+                })
+                .catch(err => {
+                    alert('通信エラー: ' + err.message);
+                    document.getElementById('messageArea').innerHTML = '';
+                });
+        }
+    </script>
+</body>
+
+</html>

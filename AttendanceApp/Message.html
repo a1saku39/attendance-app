@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>個別メッセージ - 勤怠管理アプリ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 15px;
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            opacity: 0.9;
+            transition: opacity 0.2s;
+        }
+
+        .back-link:hover {
+            opacity: 1;
+        }
+
+        .header {
+            background: white;
+            border-radius: 20px;
+            padding: 25px 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 26px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 13px;
+        }
+
+        /* タブ切替 */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 14px 16px;
+            border-radius: 14px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .tab-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .tab-btn.active {
+            background: white;
+            color: #667eea;
+            border-color: white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .tab-badge {
+            background: #ef4444;
+            color: white;
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 20px;
+            display: none;
+        }
+
+        .tab-badge.show {
+            display: inline-block;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* 送信フォーム */
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .required {
+            color: #ef4444;
+            margin-left: 4px;
+        }
+
+        select,
+        input,
+        textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 16px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+            background: white;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M6 8L1 3h10z' fill='%23666'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            padding-right: 40px;
+        }
+
+        .recipient-status {
+            margin-top: 8px;
+            font-size: 13px;
+            color: #888;
+        }
+
+        .recipient-status.error {
+            color: #ef4444;
+        }
+
+        .btn-retry {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            margin-left: 8px;
+        }
+
+        select:focus,
+        input:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .btn-send {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 30px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-send:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-send:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* メッセージカード */
+        .msg-card {
+            border: 2px solid #e0e0e0;
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+        }
+
+        .msg-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+        }
+
+        .msg-card.unread {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+
+        .msg-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .msg-from {
+            font-weight: 700;
+            color: #333;
+            font-size: 15px;
+        }
+
+        .msg-date {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .msg-subject {
+            font-weight: 600;
+            color: #4f46e5;
+            margin-bottom: 8px;
+            font-size: 15px;
+        }
+
+        .msg-body {
+            color: #555;
+            line-height: 1.7;
+            font-size: 14px;
+            white-space: pre-wrap;
+        }
+
+        .msg-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-new {
+            background: #dbeafe;
+            color: #2563eb;
+        }
+
+        .badge-read {
+            background: #e5e7eb;
+            color: #6b7280;
+        }
+
+        .msg-direction {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-right: 6px;
+        }
+
+        .dir-received {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .dir-sent {
+            background: #e0e7ff;
+            color: #4f46e5;
+        }
+
+        /* メッセージ通知 */
+        .message {
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 50px 20px;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 12px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .header,
+            .card {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 22px;
+            }
+
+            .tabs {
+                gap: 6px;
+            }
+
+            .tab-btn {
+                padding: 10px 8px;
+                font-size: 13px;
+            }
+        }
+
+        /* 送信方法の切り替えスイッチ */
+        .send-type-container {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .send-type-btn {
+            flex: 1;
+            padding: 12px 8px;
+            text-align: center;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: #64748b;
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            transition: all 0.3s;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .send-type-btn:hover {
+            border-color: #cbd5e1;
+            color: #475569;
+        }
+
+        .send-type-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .send-type-btn input {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← メニューへ戻る</a>
+
+        <div class="header">
+            <h1>✉️ 個別メッセージ</h1>
+            <p class="subtitle">個人、部署単位、または全社員へメッセージを送信できます</p>
+        </div>
+
+        <div id="messageArea"></div>
+
+        <!-- タブ切替 -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('inbox')">
+                📥 受信
+                <span id="unreadBadge" class="tab-badge">0</span>
+            </button>
+            <button class="tab-btn" onclick="switchTab('compose')">
+                ✏️ 新規作成
+            </button>
+            <button class="tab-btn" onclick="switchTab('sent')">
+                📤 送信済み
+            </button>
+        </div>
+
+        <!-- 受信ボックス -->
+        <div id="tab-inbox" class="tab-content active">
+            <div class="card">
+                <h2 style="margin-bottom: 15px; color: #333; font-size: 18px;">📥 受信メッセージ</h2>
+                <div id="inboxArea">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        読み込み中...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 新規作成 -->
+        <div id="tab-compose" class="tab-content">
+            <div class="card">
+                <h2 style="margin-bottom: 20px; color: #333; font-size: 18px;">✏️ メッセージを送信</h2>
+
+                <div class="form-group">
+                    <label for="senderCode">あなたの社員コード <span class="required">*</span></label>
+                    <input type="text" id="senderCode" placeholder="例: 1234">
+                </div>
+
+                <div class="form-group">
+                    <label>送信方法 <span class="required">*</span></label>
+                    <div class="send-type-container" id="sendTypeContainer">
+                        <label class="send-type-btn active" data-type="individual">
+                            <input type="radio" name="sendType" value="individual" checked> 個人単位
+                        </label>
+                        <label class="send-type-btn" data-type="group">
+                            <input type="radio" name="sendType" value="group"> 部署単位
+                        </label>
+                        <label class="send-type-btn" data-type="all">
+                            <input type="radio" name="sendType" value="all"> 全員一斉
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group" id="recipient-individual-group">
+                    <label for="recipientSelect">宛先社員 <span class="required">*</span></label>
+                    <div style="position: relative;">
+                        <select id="recipientSelect">
+                            <option value="">読み込み中...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group" id="recipient-group-group" style="display: none;">
+                    <label for="deptSelect">宛先部署 <span class="required">*</span></label>
+                    <div style="position: relative;">
+                        <select id="deptSelect">
+                            <option value="">読み込み中...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group" id="recipient-all-msg" style="display: none;">
+                    <div
+                        style="padding: 12px; background: #fff7ed; border: 1px solid #ffedd5; border-radius: 10px; font-size: 13px; color: #9a3412; display: flex; gap: 10px; align-items: flex-start;">
+                        <span style="font-size: 18px;">📢</span>
+                        <span>全社員（送信者を除く）へメッセージを一斉に送信します。多数の社員に送信されるため、完了まで時間がかかる場合があります。</span>
+                    </div>
+                </div>
+
+                <div id="recipientStatus" class="recipient-status"></div>
+
+                <div class="form-group">
+                    <label for="msgSubject">件名 <span class="required">*</span></label>
+                    <input type="text" id="msgSubject" placeholder="件名を入力してください">
+                </div>
+
+                <div class="form-group">
+                    <label for="msgBody">本文 <span class="required">*</span></label>
+                    <textarea id="msgBody" placeholder="メッセージ本文を入力してください"></textarea>
+                </div>
+
+                <button class="btn-send" id="sendBtn" onclick="sendMessage()">📩 送信する</button>
+            </div>
+        </div>
+
+        <!-- 送信済み -->
+        <div id="tab-sent" class="tab-content">
+            <div class="card">
+                <h2 style="margin-bottom: 15px; color: #333; font-size: 18px;">📤 送信済みメッセージ</h2>
+                <div id="sentArea">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        読み込み中...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let employees = [];
+        let departments = [];
+        let myEmployeeCode = '';
+
+        window.onload = function () {
+            // 社員コードを自動入力
+            const savedId = localStorage.getItem('attendance_employee_id');
+            if (savedId) {
+                document.getElementById('senderCode').value = savedId;
+                myEmployeeCode = savedId;
+            }
+            loadFormPresets();
+            loadMessages();
+            initSendTypeButtons();
+        };
+
+        async function loadFormPresets() {
+            await loadEmployees();
+            await loadDepartments();
+        }
+
+        function initSendTypeButtons() {
+            const btns = document.querySelectorAll('.send-type-btn');
+            btns.forEach(btn => {
+                btn.onclick = function () {
+                    btns.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    this.querySelector('input').checked = true;
+                    toggleRecipientType();
+                };
+            });
+        }
+
+        function toggleRecipientType() {
+            const radio = document.querySelector('input[name="sendType"]:checked');
+            if (!radio) return;
+            const sendType = radio.value;
+            const indGroup = document.getElementById('recipient-individual-group');
+            const grpGroup = document.getElementById('recipient-group-group');
+            const allMsg = document.getElementById('recipient-all-msg');
+
+            indGroup.style.display = (sendType === 'individual') ? 'block' : 'none';
+            grpGroup.style.display = (sendType === 'group') ? 'block' : 'none';
+            allMsg.style.display = (sendType === 'all') ? 'block' : 'none';
+        }
+
+        function switchTab(tabName) {
+            // タブボタンの切替
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+            event.currentTarget.classList.add('active');
+            document.getElementById('tab-' + tabName).classList.add('active');
+
+            if (tabName === 'inbox' || tabName === 'sent') {
+                loadMessages();
+            }
+        }
+
+        async function loadEmployees() {
+            const gasUrl = localStorage.getItem('attendance_gas_url');
+            const statusEl = document.getElementById('recipientStatus');
+            const select = document.getElementById('recipientSelect');
+
+            if (!gasUrl) {
+                select.innerHTML = '<option value="">-- GAS URL未設定 --</option>';
+                statusEl.innerHTML = '<span class="error">⚠️ GAS URLが設定されていません。メイン画面の設定から登録してください。</span>';
+                statusEl.classList.add('error');
+                return;
+            }
+
+            select.innerHTML = '<option value="">読み込み中...</option>';
+            statusEl.textContent = '社員一覧を読み込んでいます...';
+            statusEl.classList.remove('error');
+
+            try {
+                const response = await fetch(gasUrl, {
+                    method: 'POST',
+                    redirect: 'follow',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'getEmployeeList' })
+                });
+
+                const text = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (parseErr) {
+                    console.error('JSONパースエラー:', text.substring(0, 200));
+                    throw new Error('サーバーの応答を解析できません。デプロイを更新してください。');
+                }
+
+                if (data.result === 'success') {
+                    employees = data.employees || [];
+                    populateRecipientSelect();
+                    statusEl.textContent = employees.length + '名の社員を読み込みました';
+                } else {
+                    select.innerHTML = '<option value="">-- 取得失敗 --</option>';
+                    statusEl.innerHTML = '<span class="error">⚠️ ' + (data.message || '不明なエラー') + '</span> <button class="btn-retry" onclick="loadEmployees()">再試行</button>';
+                    statusEl.classList.add('error');
+                }
+            } catch (error) {
+                console.error('社員一覧取得エラー:', error);
+                select.innerHTML = '<option value="">-- 読み込みエラー --</option>';
+                statusEl.innerHTML = '<span class="error">⚠️ ' + error.message + '</span> <button class="btn-retry" onclick="loadEmployees()">再試行</button>';
+                statusEl.classList.add('error');
+            }
+        }
+
+        function populateRecipientSelect() {
+            const select = document.getElementById('recipientSelect');
+            select.innerHTML = '<option value="">-- 宛先を選択（' + employees.length + '名）--</option>';
+
+            employees.forEach(emp => {
+                // 自分以外をリストアップ
+                if (emp.code === myEmployeeCode) return;
+                const opt = document.createElement('option');
+                opt.value = emp.code;
+                opt.textContent = emp.name + '（' + emp.department + '）- ' + emp.code;
+                select.appendChild(opt);
+            });
+        }
+
+        async function loadDepartments() {
+            const gasUrl = localStorage.getItem('attendance_gas_url');
+            const select = document.getElementById('deptSelect');
+            if (!gasUrl) return;
+
+            select.innerHTML = '<option value="">読み込み中...</option>';
+
+            try {
+                const response = await fetch(gasUrl, {
+                    method: 'POST',
+                    redirect: 'follow',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'getDepartments' })
+                });
+                const text = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (parseErr) {
+                    console.error('部署一覧JSONパースエラー:', text.substring(0, 200));
+                    throw new Error('サーバーの応答を解析できません。デプロイを更新してください。');
+                }
+                if (data.result === 'success') {
+                    departments = data.departments || [];
+                    select.innerHTML = '<option value="">-- 部署を選択 --</option>';
+                    departments.forEach(dept => {
+                        if (dept === '未設定') return;
+                        const opt = document.createElement('option');
+                        opt.value = dept;
+                        opt.textContent = dept;
+                        select.appendChild(opt);
+                    });
+                    if (departments.filter(d => d !== '未設定').length === 0) {
+                        select.innerHTML = '<option value="">-- 部署データなし --</option>';
+                    }
+                } else {
+                    select.innerHTML = '<option value="">-- 取得失敗 --</option>';
+                    console.error('部署取得エラー:', data.message);
+                }
+            } catch (error) {
+                console.error('部署一覧取得エラー:', error);
+                select.innerHTML = '<option value="">-- 読み込みエラー --</option>';
+            }
+        }
+
+        async function loadMessages() {
+            const gasUrl = localStorage.getItem('attendance_gas_url');
+            myEmployeeCode = document.getElementById('senderCode').value.trim();
+
+            if (!gasUrl || !myEmployeeCode) {
+                document.getElementById('inboxArea').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🔑</div>
+                        <p>社員コードを入力してメッセージを確認してください</p>
+                    </div>`;
+                document.getElementById('sentArea').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🔑</div>
+                        <p>社員コードを入力してメッセージを確認してください</p>
+                    </div>`;
+                return;
+            }
+
+            try {
+                const response = await fetch(gasUrl, {
+                    method: 'POST',
+                    redirect: 'follow',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action: 'getMessages',
+                        employeeCode: myEmployeeCode
+                    })
+                });
+
+                const text = await response.text();
+                const data = JSON.parse(text);
+                if (data.result === 'success') {
+                    displayInbox(data.received || []);
+                    displaySent(data.sent || []);
+                } else {
+                    showMessage('error', 'メッセージの取得に失敗: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('error', '通信エラーが発生しました');
+            }
+        }
+
+        function displayInbox(messages) {
+            const container = document.getElementById('inboxArea');
+            const unreadCount = messages.filter(m => m.status === '未読').length;
+
+            // 未読バッジ更新
+            const badge = document.getElementById('unreadBadge');
+            if (unreadCount > 0) {
+                badge.textContent = unreadCount;
+                badge.classList.add('show');
+            } else {
+                badge.classList.remove('show');
+            }
+
+            if (messages.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <p>受信メッセージはありません</p>
+                    </div>`;
+                return;
+            }
+
+            let html = '';
+            messages.forEach((msg, idx) => {
+                const isUnread = msg.status === '未読';
+                html += `
+                    <div class="msg-card ${isUnread ? 'unread' : ''}" onclick="markAsRead(${msg.rowIndex})">
+                        <div class="msg-header">
+                            <div>
+                                <span class="msg-badge ${isUnread ? 'badge-new' : 'badge-read'}">${isUnread ? '未読' : '既読'}</span>
+                                <span class="msg-from">📤 ${escapeHtml(msg.senderName)}</span>
+                            </div>
+                            <span class="msg-date">${msg.date}</span>
+                        </div>
+                        <div class="msg-subject">${escapeHtml(msg.subject)}</div>
+                        <div class="msg-body">${escapeHtml(msg.body)}</div>
+                    </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function displaySent(messages) {
+            const container = document.getElementById('sentArea');
+
+            if (messages.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <p>送信済みメッセージはありません</p>
+                    </div>`;
+                return;
+            }
+
+            let html = '';
+            messages.forEach(msg => {
+                html += `
+                    <div class="msg-card">
+                        <div class="msg-header">
+                            <div>
+                                <span class="msg-badge badge-read">${msg.status}</span>
+                                <span class="msg-from">📥 宛先: ${escapeHtml(msg.recipientName)}</span>
+                            </div>
+                            <span class="msg-date">${msg.date}</span>
+                        </div>
+                        <div class="msg-subject">${escapeHtml(msg.subject)}</div>
+                        <div class="msg-body">${escapeHtml(msg.body)}</div>
+                    </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        async function sendMessage() {
+            const gasUrl = localStorage.getItem('attendance_gas_url');
+            const senderCode = document.getElementById('senderCode').value.trim();
+            const sendType = document.querySelector('input[name="sendType"]:checked').value;
+            let recipientCode = '';
+
+            if (sendType === 'individual') {
+                recipientCode = document.getElementById('recipientSelect').value;
+            } else if (sendType === 'group') {
+                recipientCode = document.getElementById('deptSelect').value;
+            }
+
+            const subject = document.getElementById('msgSubject').value.trim();
+            const body = document.getElementById('msgBody').value.trim();
+
+            if (!senderCode || (sendType !== 'all' && !recipientCode) || !subject || !body) {
+                showMessage('error', 'すべての必須項目を入力してください');
+                return;
+            }
+
+            if (!gasUrl) {
+                showMessage('error', 'GAS URLが設定されていません');
+                return;
+            }
+
+            const sendBtn = document.getElementById('sendBtn');
+            sendBtn.disabled = true;
+            sendBtn.textContent = '送信中...';
+
+            try {
+                const response = await fetch(gasUrl, {
+                    method: 'POST',
+                    redirect: 'follow',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action: 'sendMessage',
+                        senderCode: senderCode,
+                        sendType: sendType,
+                        recipientCode: recipientCode,
+                        subject: subject,
+                        body: body
+                    })
+                });
+
+                const text = await response.text();
+                const data = JSON.parse(text);
+
+                if (data.result === 'success') {
+                    showMessage('success', data.message || 'メッセージを送信しました！');
+                    document.getElementById('msgSubject').value = '';
+                    document.getElementById('msgBody').value = '';
+                    document.getElementById('recipientSelect').value = '';
+                    document.getElementById('deptSelect').value = '';
+
+                    // 送信済みタブに切替
+                    setTimeout(() => {
+                        document.querySelectorAll('.tab-btn')[2].click();
+                    }, 1500);
+                } else {
+                    showMessage('error', '送信に失敗: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('error', '通信エラーが発生しました');
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.textContent = '📩 送信する';
+            }
+        }
+
+        async function markAsRead(rowIndex) {
+            const gasUrl = localStorage.getItem('attendance_gas_url');
+            if (!gasUrl || !rowIndex) return;
+
+            try {
+                await fetch(gasUrl, {
+                    method: 'POST',
+                    redirect: 'follow',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action: 'markMessageRead',
+                        rowIndex: rowIndex
+                    })
+                });
+                // 再読み込みして既読反映
+                loadMessages();
+            } catch (error) {
+                console.error('既読処理エラー:', error);
+            }
+        }
+
+        function showMessage(type, msg) {
+            const messageArea = document.getElementById('messageArea');
+            messageArea.innerHTML = `<div class="message ${type}">${msg}</div>`;
+            if (type !== 'success') {
+                setTimeout(() => { messageArea.innerHTML = ''; }, 5000);
+            } else {
+                setTimeout(() => { messageArea.innerHTML = ''; }, 3000);
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 社員コード変更時にメッセージ再読み込み
+        document.getElementById('senderCode').addEventListener('change', function () {
+            myEmployeeCode = this.value.trim();
+            loadMessages();
+        });
+    </script>
+</body>
+
+</html>

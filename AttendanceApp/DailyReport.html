@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日報 - 勤怠管理アプリ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-dark: #4338ca;
+            --accent: #f59e0b;
+            --success: #10b981;
+            --danger: #ef4444;
+            --bg: #f3f4f6;
+            --card: #ffffff;
+            --text: #1f2937;
+            --sub: #6b7280;
+            --border: #e5e7eb;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container { max-width: 860px; margin: 0 auto; }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 15px;
+            color: rgba(255,255,255,0.9);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            transition: opacity 0.2s;
+        }
+        .back-link:hover { opacity: 0.7; }
+
+        .page-header {
+            background: white;
+            border-radius: 20px;
+            padding: 25px 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+        }
+        .page-header h1 {
+            color: var(--primary);
+            font-size: 24px;
+            margin-bottom: 4px;
+        }
+        .page-header p { color: var(--sub); font-size: 13px; }
+
+        /* タブ */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 13px;
+            border: 2px solid rgba(255,255,255,0.4);
+            border-radius: 14px;
+            background: rgba(255,255,255,0.18);
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .tab-btn:hover { background: rgba(255,255,255,0.28); }
+        .tab-btn.active {
+            background: white;
+            color: var(--primary);
+            border-color: white;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* カード */
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 18px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        .card-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* フォーム */
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+        @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
+
+        .form-group { margin-bottom: 14px; }
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--sub);
+            margin-bottom: 6px;
+        }
+        .required { color: var(--danger); margin-left: 3px; }
+
+        input[type="text"], input[type="date"], input[type="datetime-local"],
+        select, textarea {
+            width: 100%;
+            padding: 11px 14px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 15px;
+            font-family: inherit;
+            background: white;
+            transition: border-color 0.2s;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M6 8L1 3h10z' fill='%23666'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            padding-right: 36px;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        textarea { resize: vertical; min-height: 80px; }
+
+        /* PDCA セクション */
+        .pdca-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+        @media (max-width: 600px) { .pdca-grid { grid-template-columns: 1fr; } }
+
+        .pdca-item { position: relative; }
+        .pdca-label {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            font-size: 13px;
+            font-weight: 700;
+            color: white;
+            margin-right: 6px;
+            flex-shrink: 0;
+        }
+        .pdca-p { background: #4f46e5; }
+        .pdca-d { background: #10b981; }
+        .pdca-c { background: #f59e0b; }
+        .pdca-a { background: #ef4444; }
+
+        .pdca-field-label {
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--sub);
+            margin-bottom: 6px;
+        }
+
+        /* 商談カード */
+        .meeting-card {
+            border: 2px solid var(--border);
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 14px;
+            position: relative;
+            transition: border-color 0.2s;
+        }
+        .meeting-card:hover { border-color: #c7d2fe; }
+
+        .meeting-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+        .meeting-number {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            font-size: 13px;
+            font-weight: 700;
+            padding: 4px 14px;
+            border-radius: 20px;
+        }
+        .btn-remove-meeting {
+            background: #fee2e2;
+            color: var(--danger);
+            border: none;
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-remove-meeting:hover { background: #fecaca; }
+
+        .btn-add-meeting {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 13px;
+            border: 2px dashed #c7d2fe;
+            border-radius: 14px;
+            background: #f5f3ff;
+            color: var(--primary);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 18px;
+        }
+        .btn-add-meeting:hover { background: #ede9fe; border-color: var(--primary); }
+
+        /* ボタン群 */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 14px 30px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            box-shadow: 0 4px 14px rgba(79,70,229,0.35);
+            transition: all 0.3s;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(79,70,229,0.45); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        /* メッセージ */
+        .msg { padding: 14px 18px; border-radius: 12px; font-size: 14px; font-weight: 600; margin-bottom: 16px; }
+        .msg.success { background: #d1fae5; color: #065f46; border: 1.5px solid #6ee7b7; }
+        .msg.error   { background: #fee2e2; color: #991b1b; border: 1.5px solid #fca5a5; }
+
+        /* 閲覧用 */
+        .report-filter {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+        }
+        .report-filter .form-group { margin-bottom: 0; flex: 1; min-width: 140px; }
+
+        .btn-secondary {
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 11px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+        .btn-secondary:hover { background: var(--primary-dark); }
+
+        .report-item {
+            border: 2px solid var(--border);
+            border-radius: 16px;
+            margin-bottom: 16px;
+            overflow: hidden;
+            transition: box-shadow 0.2s;
+        }
+        .report-item:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+
+        .report-item-header {
+            background: linear-gradient(135deg, #f5f3ff, #ede9fe);
+            padding: 12px 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .report-date { font-weight: 700; color: var(--primary); font-size: 15px; }
+        .report-customer { font-weight: 600; color: var(--text); font-size: 14px; }
+        .report-purpose {
+            background: var(--primary);
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 20px;
+        }
+
+        .report-item-body { padding: 16px 18px; }
+        .report-meta { font-size: 12px; color: var(--sub); margin-bottom: 12px; }
+
+        .pdca-view {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        @media (max-width: 600px) { .pdca-view { grid-template-columns: 1fr; } }
+
+        .pdca-view-item {
+            background: #f9fafb;
+            border-radius: 10px;
+            padding: 12px 14px;
+        }
+        .pdca-view-item-title {
+            display: flex;
+            align-items: center;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--sub);
+            margin-bottom: 6px;
+            gap: 6px;
+        }
+        .pdca-view-item-body { font-size: 14px; color: var(--text); white-space: pre-wrap; }
+
+        .empty-state {
+            text-align: center;
+            padding: 50px 20px;
+            color: var(--sub);
+        }
+        .empty-icon { font-size: 48px; margin-bottom: 12px; }
+
+        .spinner {
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 12px;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .loading { text-align: center; padding: 30px; color: var(--sub); }
+
+        @media (max-width: 540px) {
+            body { padding: 12px; }
+            .card { padding: 18px; }
+            .page-header { padding: 18px 20px; }
+        }
+
+        /* ===== 編集モーダル ===== */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            animation: fadeIn 0.2s ease;
+        }
+        @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+
+        .modal-box {
+            background: white;
+            border-radius: 20px;
+            padding: 24px;
+            width: 100%;
+            max-width: 680px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+            animation: slideUp 0.25s ease;
+        }
+        @keyframes slideUp { from { transform:translateY(20px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 18px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #f3f4f6;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .btn-save {
+            flex: 2;
+            background: var(--success);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .btn-save:hover { opacity: 0.88; }
+        .btn-cancel {
+            flex: 1;
+            background: #f3f4f6;
+            color: #374151;
+            border: none;
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-cancel:hover { background: #e5e7eb; }
+
+        /* report card action buttons */
+        .report-actions {
+            display: flex;
+            gap: 8px;
+            padding: 10px 18px 14px;
+        }
+        .btn-edit {
+            flex: 1;
+            background: #ede9fe;
+            color: #5b21b6;
+            border: none;
+            border-radius: 8px;
+            padding: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-edit:hover { background: #ddd6fe; }
+        .btn-delete {
+            flex: 1;
+            background: #fee2e2;
+            color: #991b1b;
+            border: none;
+            border-radius: 8px;
+            padding: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-delete:hover { background: #fecaca; }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← メニューへ戻る</a>
+
+        <div class="page-header">
+            <h1>📝 日報</h1>
+            <p>商談記録をPDCA形式で入力し、スプレッドシートに保存します</p>
+        </div>
+
+        <div id="msgArea"></div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('input', this)">✏️ 新規入力</button>
+            <button class="tab-btn"        onclick="switchTab('view',  this)">📋 記録一覧</button>
+        </div>
+
+        <!-- ========== 入力タブ ========== -->
+        <div id="tab-input" class="tab-content active">
+
+            <div class="card">
+                <div class="card-title">👤 基本情報</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="empCode">社員コード <span class="required">*</span></label>
+                        <input type="text" id="empCode" placeholder="例: 1234">
+                    </div>
+                    <div class="form-group">
+                        <label for="reportDate">日付 <span class="required">*</span></label>
+                        <input type="date" id="reportDate">
+                    </div>
+                </div>
+            </div>
+
+            <div id="meetingList"></div>
+
+            <button class="btn-add-meeting" onclick="addMeeting()">＋ 商談を追加</button>
+
+            <div class="card">
+                <button class="btn-primary" id="submitBtn" onclick="submitReport()">📩 日報を保存する</button>
+            </div>
+        </div>
+
+        <!-- ========== 閲覧タブ ========== -->
+        <div id="tab-view" class="tab-content">
+            <div class="card">
+                <div class="card-title">🔍 絞り込み</div>
+                <div class="report-filter">
+                    <div class="form-group">
+                        <label>社員コード</label>
+                        <input type="text" id="filterCode" placeholder="空欄で全員">
+                    </div>
+                    <div class="form-group">
+                        <label>年月</label>
+                        <input type="month" id="filterMonth">
+                    </div>
+                    <button class="btn-secondary" onclick="loadReports()">🔍 検索</button>
+                </div>
+            </div>
+            <div id="reportListArea">
+                <div class="empty-state">
+                    <div class="empty-icon">📋</div>
+                    <p>「検索」ボタンを押して日報を表示してください</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 編集モーダル ===== -->
+    <div id="editModal" class="modal-backdrop" style="display:none;" onclick="closeModalOnBackdrop(event)">
+        <div class="modal-box">
+            <div class="modal-title">✏️ 日報を編集</div>
+            <input type="hidden" id="editRowIndex">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>商談日時</label>
+                    <input type="datetime-local" id="editMeetingDt">
+                </div>
+                <div class="form-group">
+                    <label>顧客名</label>
+                    <input type="text" id="editCustomer">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>商談目的</label>
+                    <select id="editPurpose">
+                        <option value="">-- 選択 --</option>
+                        <option>新規開拓</option>
+                        <option>提案・プレゼン</option>
+                        <option>フォローアップ</option>
+                        <option>契約・クロージング</option>
+                        <option>ニーズヒアリング</option>
+                        <option>クレーム・問題対応</option>
+                        <option>関係構築</option>
+                        <option>デモ・説明</option>
+                        <option>その他</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>商談時間（分）</label>
+                    <input type="number" id="editDuration" min="0" step="5" placeholder="例: 60">
+                </div>
+            </div>
+            <div class="pdca-grid">
+                <div class="pdca-item">
+                    <div class="pdca-field-label"><span class="pdca-label pdca-p">P</span>計画・目標</div>
+                    <textarea id="editPlan"></textarea>
+                </div>
+                <div class="pdca-item">
+                    <div class="pdca-field-label"><span class="pdca-label pdca-d">D</span>実行・商談内容</div>
+                    <textarea id="editDo"></textarea>
+                </div>
+                <div class="pdca-item">
+                    <div class="pdca-field-label"><span class="pdca-label pdca-c">C</span>結果・評価</div>
+                    <textarea id="editCheck"></textarea>
+                </div>
+                <div class="pdca-item">
+                    <div class="pdca-field-label"><span class="pdca-label pdca-a">A</span>次回アクション</div>
+                    <textarea id="editAction"></textarea>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeEditModal()">キャンセル</button>
+                <button class="btn-save" id="editSaveBtn" onclick="saveEditReport()">💾 保存する</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==============================
+        // 初期化
+        // ==============================
+        const PURPOSES = [
+            '新規開拓',
+            '提案・プレゼン',
+            'フォローアップ',
+            '契約・クロージング',
+            'ニーズヒアリング',
+            'クレーム・問題対応',
+            '関係構築',
+            'デモ・説明',
+            'その他'
+        ];
+
+        let meetingIndex = 0;
+
+        window.onload = function () {
+            // 社員コードを自動入力
+            const savedId = localStorage.getItem('attendance_employee_id');
+            if (savedId) document.getElementById('empCode').value = savedId;
+
+            // 今日の日付をデフォルト
+            const today = new Date();
+            document.getElementById('reportDate').value = today.toISOString().split('T')[0];
+
+            // 年月フィルタも今月
+            const ym = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
+            document.getElementById('filterMonth').value = ym;
+            document.getElementById('filterCode').value = savedId || '';
+
+            // 最初の商談を1件追加
+            addMeeting();
+        };
+
+        // ==============================
+        // タブ切替
+        // ==============================
+        function switchTab(name, btn) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('tab-' + name).classList.add('active');
+        }
+
+        // ==============================
+        // 商談を追加
+        // ==============================
+        function addMeeting() {
+            meetingIndex++;
+            const idx = meetingIndex;
+            const list = document.getElementById('meetingList');
+
+            const purposeOptions = PURPOSES.map(p =>
+                `<option value="${p}">${p}</option>`
+            ).join('');
+
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.id = 'meeting-' + idx;
+            card.innerHTML = `
+                <div class="meeting-card-header">
+                    <span class="meeting-number">商談 ${idx}</span>
+                    ${idx > 1 ? `<button class="btn-remove-meeting" onclick="removeMeeting(${idx})">✕ 削除</button>` : ''}
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>商談日時 <span class="required">*</span></label>
+                        <input type="datetime-local" id="meetingDt-${idx}">
+                    </div>
+                    <div class="form-group">
+                        <label>顧客名 <span class="required">*</span></label>
+                        <input type="text" id="customer-${idx}" placeholder="例: ○○株式会社">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>商談目的 <span class="required">*</span></label>
+                        <select id="purpose-${idx}">
+                            <option value="">-- 選択してください --</option>
+                            ${purposeOptions}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>商談時間（分）</label>
+                        <input type="number" id="duration-${idx}" min="0" step="5" placeholder="例: 60">
+                    </div>
+                </div>
+
+                <div class="card-title" style="margin-top:8px;">📊 商談内容 PDCA</div>
+
+                <div class="pdca-grid">
+                    <div class="pdca-item">
+                        <div class="pdca-field-label">
+                            <span class="pdca-label pdca-p">P</span>計画・目標
+                        </div>
+                        <textarea id="plan-${idx}" placeholder="今日の商談で達成したい目標や事前準備内容"></textarea>
+                    </div>
+                    <div class="pdca-item">
+                        <div class="pdca-field-label">
+                            <span class="pdca-label pdca-d">D</span>実行・商談内容
+                        </div>
+                        <textarea id="do-${idx}" placeholder="実際に行った商談の内容・話した内容"></textarea>
+                    </div>
+                    <div class="pdca-item">
+                        <div class="pdca-field-label">
+                            <span class="pdca-label pdca-c">C</span>結果・評価
+                        </div>
+                        <textarea id="check-${idx}" placeholder="商談の結果・手応え・うまくいった点/課題点"></textarea>
+                    </div>
+                    <div class="pdca-item">
+                        <div class="pdca-field-label">
+                            <span class="pdca-label pdca-a">A</span>次回アクション
+                        </div>
+                        <textarea id="action-${idx}" placeholder="次回訪問予定・フォローアップ内容・改善策"></textarea>
+                    </div>
+                </div>
+            `;
+            list.appendChild(card);
+
+            // 今日の日時をデフォルトにセット
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            document.getElementById('meetingDt-' + idx).value = now.toISOString().slice(0, 16);
+
+            card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function removeMeeting(idx) {
+            const card = document.getElementById('meeting-' + idx);
+            if (card) card.remove();
+        }
+
+        // ==============================
+        // 日報送信
+        // ==============================
+        async function submitReport() {
+            const gasUrl      = localStorage.getItem('attendance_gas_url');
+            const empCode     = document.getElementById('empCode').value.trim();
+            const reportDateV = document.getElementById('reportDate').value;
+
+            if (!gasUrl) {
+                showMsg('error', 'GAS URLが設定されていません。トップページの設定から登録してください。');
+                return;
+            }
+            if (!empCode) {
+                showMsg('error', '社員コードを入力してください。');
+                return;
+            }
+            if (!reportDateV) {
+                showMsg('error', '日付を選択してください。');
+                return;
+            }
+
+            // 商談カードを収集
+            const cards = document.querySelectorAll('[id^="meeting-"]');
+            if (cards.length === 0) {
+                showMsg('error', '商談情報を1件以上入力してください。');
+                return;
+            }
+
+            const meetings = [];
+            let valid = true;
+            cards.forEach(card => {
+                const idx = card.id.replace('meeting-', '');
+                const dt  = document.getElementById('meetingDt-' + idx)?.value || '';
+                const cus = document.getElementById('customer-' + idx)?.value.trim() || '';
+                const pur = document.getElementById('purpose-' + idx)?.value || '';
+
+                if (!dt || !cus || !pur) {
+                    showMsg('error', '商談 ' + idx + ': 商談日時・顧客名・商談目的は必須項目です。');
+                    valid = false;
+                }
+                meetings.push({
+                    meetingDatetime: dt.replace('T', ' '),
+                    meetingDuration: document.getElementById('duration-' + idx)?.value.trim() || '',
+                    customerName:    cus,
+                    purpose:         pur,
+                    plan:            document.getElementById('plan-'   + idx)?.value.trim() || '',
+                    doContent:       document.getElementById('do-'     + idx)?.value.trim() || '',
+                    check:           document.getElementById('check-'  + idx)?.value.trim() || '',
+                    action:          document.getElementById('action-' + idx)?.value.trim() || ''
+                });
+            });
+            if (!valid) return;
+
+            // 日付を YYYY/MM/DD 形式に変換
+            const [y, m, d] = reportDateV.split('-');
+            const reportDate = `${y}/${m}/${d}`;
+
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.textContent = '保存中...';
+
+            try {
+                const response = await fetch(gasUrl, {
+                    method: 'POST',
+                    redirect: 'follow',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action:       'saveDailyReport',
+                        employeeCode: empCode,
+                        reportDate:   reportDate,
+                        meetings:     meetings
+                    })
+                });
+                const text = await response.text();
+                let data;
+                try { data = JSON.parse(text); }
+                catch (e) { throw new Error('サーバーの応答を解析できません。GASのデプロイを更新してください。'); }
+
+                if (data.result === 'success') {
+                    showMsg('success', '✅ ' + data.message);
+                    // フォームリセット（商談カードを削除して1件追加）
+                    document.getElementById('meetingList').innerHTML = '';
+                    meetingIndex = 0;
+                    addMeeting();
+                } else {
+                    showMsg('error', '送信失敗: ' + data.message);
+                }
+            } catch (err) {
+                showMsg('error', '通信エラー: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '📩 日報を保存する';
+            }
+        }
+
+        // ==============================
+        // 日報一覧取得
+        // ==============================
+        async function loadReports() {
+            const gasUrl = localStorage.getItem('attendance_gas_url');
+            if (!gasUrl) {
+                showMsg('error', 'GAS URLが設定されていません。');
+                return;
+            }
+
+            const filterCode  = document.getElementById('filterCode').value.trim();
+            const filterMonth = document.getElementById('filterMonth').value; // YYYY-MM
+
+            const area = document.getElementById('reportListArea');
+            area.innerHTML = '<div class="loading"><div class="spinner"></div>読み込み中...</div>';
+
+            try {
+                const response = await fetch(gasUrl, {
+                    method: 'POST',
+                    redirect: 'follow',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action:       'getDailyReports',
+                        employeeCode: filterCode,
+                        yearMonth:    filterMonth
+                    })
+                });
+                const text = await response.text();
+                let data;
+                try { data = JSON.parse(text); }
+                catch (e) { throw new Error('サーバーの応答を解析できません。GASのデプロイを更新してください。'); }
+
+                if (data.result === 'success') {
+                    renderReports(data.reports || []);
+                } else {
+                    area.innerHTML = `<div class="msg error">取得エラー: ${data.message}</div>`;
+                }
+            } catch (err) {
+                area.innerHTML = `<div class="msg error">通信エラー: ${err.message}</div>`;
+            }
+        }
+
+        function renderReports(reports) {
+            const area = document.getElementById('reportListArea');
+            if (reports.length === 0) {
+                area.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📭</div>
+                        <p>該当期間の日報が見つかりませんでした</p>
+                    </div>`;
+                return;
+            }
+
+            const purposeColors = {
+                '新規開拓': '#4f46e5', '提案・プレゼン': '#7c3aed', 'フォローアップ': '#0ea5e9',
+                '契約・クロージング': '#10b981', 'ニーズヒアリング': '#f59e0b',
+                'クレーム・問題対応': '#ef4444', '関係構築': '#ec4899',
+                'デモ・説明': '#14b8a6', 'その他': '#6b7280'
+            };
+
+            const pdcaLabels = {
+                plan:      { label: 'P 計画・目標',    cls: 'pdca-p' },
+                doContent: { label: 'D 実行・内容',    cls: 'pdca-d' },
+                check:     { label: 'C 結果・評価',    cls: 'pdca-c' },
+                action:    { label: 'A 次回アクション', cls: 'pdca-a' }
+            };
+
+            // 後で openEditModal に渡すためのデータを保持
+            window._reportData = reports;
+
+            let html = `<div style="margin-bottom:10px;color:rgba(255,255,255,0.85);font-size:13px;font-weight:600;">${reports.length}件の商談記録</div>`;
+
+            reports.forEach((r, i) => {
+                const purColor = purposeColors[r.purpose] || '#6b7280';
+                let pdcaHtml = '';
+                Object.keys(pdcaLabels).forEach(key => {
+                    const info = pdcaLabels[key];
+                    const val  = escapeHtml(r[key] || '');
+                    pdcaHtml += `
+                        <div class="pdca-view-item">
+                            <div class="pdca-view-item-title">
+                                <span class="pdca-label ${info.cls}" style="width:22px;height:22px;font-size:11px;">${info.label.charAt(0)}</span>
+                                ${info.label.slice(2)}
+                            </div>
+                            <div class="pdca-view-item-body">${val || '<span style="color:#9ca3af">未記入</span>'}</div>
+                        </div>`;
+                });
+
+                html += `
+                    <div class="report-item card" style="padding:0;margin-bottom:16px;">
+                        <div class="report-item-header">
+                            <div>
+                                <div class="report-date">📅 ${r.date}</div>
+                                <div class="report-customer" style="margin-top:2px;">🏢 ${escapeHtml(r.customerName)}</div>
+                            </div>
+                            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                                <span class="report-purpose" style="background:${purColor};">${escapeHtml(r.purpose)}</span>
+                                <span style="font-size:11px;color:#6b7280;">${r.employeeName}（${r.employeeCode}）</span>
+                            </div>
+                        </div>
+                        <div class="report-item-body">
+                            <div class="report-meta">🕐 商談日時: ${r.meetingDatetime} ${r.meetingDuration ? '( ' + r.meetingDuration + ' 分 )' : ''} ｜ 記録: ${r.recordedAt}</div>
+                            <div class="pdca-view">${pdcaHtml}</div>
+                        </div>
+                        <div class="report-actions">
+                            <button class="btn-edit" onclick="openEditModal(${i})">✏️ 編集</button>
+                            <button class="btn-delete" onclick="deleteReport(${r.rowIndex}, this)">🗑️ 削除</button>
+                        </div>
+                    </div>`;
+            });
+
+            area.innerHTML = html;
+        }
+
+        // ==============================
+        // 編集モーダル
+        // ==============================
+        function openEditModal(idx) {
+            const r = window._reportData[idx];
+            if (!r) return;
+
+            document.getElementById('editRowIndex').value  = r.rowIndex;
+            // datetime-local は「YYYY-MM-DDTHH:mm」形式が必要
+            document.getElementById('editMeetingDt').value = (r.meetingDatetime || '').replace(' ', 'T').slice(0, 16);
+            document.getElementById('editCustomer').value  = r.customerName || '';
+            document.getElementById('editPurpose').value   = r.purpose      || '';
+            document.getElementById('editDuration').value  = r.meetingDuration || '';
+            document.getElementById('editPlan').value      = r.plan         || '';
+            document.getElementById('editDo').value        = r.doContent    || '';
+            document.getElementById('editCheck').value     = r.check        || '';
+            document.getElementById('editAction').value    = r.action       || '';
+
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        function closeModalOnBackdrop(event) {
+            if (event.target === event.currentTarget) closeEditModal();
+        }
+
+        async function saveEditReport() {
+            const gasUrl   = localStorage.getItem('attendance_gas_url');
+            const rowIndex = document.getElementById('editRowIndex').value;
+
+            const payload = {
+                action:          'updateDailyReport',
+                rowIndex:        parseInt(rowIndex, 10),
+                meetingDatetime: document.getElementById('editMeetingDt').value.replace('T', ' '),
+                customerName:    document.getElementById('editCustomer').value.trim(),
+                purpose:         document.getElementById('editPurpose').value,
+                meetingDuration: document.getElementById('editDuration').value.trim(),
+                plan:            document.getElementById('editPlan').value.trim(),
+                doContent:       document.getElementById('editDo').value.trim(),
+                check:           document.getElementById('editCheck').value.trim(),
+                action:          document.getElementById('editAction').value.trim()
+            };
+
+            const btn = document.getElementById('editSaveBtn');
+            btn.disabled = true;
+            btn.textContent = '保存中...';
+
+            try {
+                const response = await fetch(gasUrl, {
+                    method: 'POST', redirect: 'follow',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload)
+                });
+                const text = await response.text();
+                let data;
+                try { data = JSON.parse(text); }
+                catch (e) { throw new Error('サーバーの応答を解析できません。'); }
+
+                if (data.result === 'success') {
+                    showMsg('success', '✅ 日報を更新しました');
+                    closeEditModal();
+                    loadReports(); // 一覧を再取得
+                } else {
+                    showMsg('error', '更新失敗: ' + data.message);
+                }
+            } catch (err) {
+                showMsg('error', '通信エラー: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '💾 保存する';
+            }
+        }
+
+        // ==============================
+        // 削除
+        // ==============================
+        async function deleteReport(rowIndex, btnEl) {
+            if (!confirm('この商談記録を削除してもよいですか？')) return;
+
+            const gasUrl = localStorage.getItem('attendance_gas_url');
+            btnEl.disabled = true;
+            btnEl.textContent = '削除中...';
+
+            try {
+                const response = await fetch(gasUrl, {
+                    method: 'POST', redirect: 'follow',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'deleteDailyReport', rowIndex })
+                });
+                const text = await response.text();
+                let data;
+                try { data = JSON.parse(text); }
+                catch (e) { throw new Error('サーバーの応答を解析できません。'); }
+
+                if (data.result === 'success') {
+                    showMsg('success', '🗑️ 削除しました');
+                    loadReports(); // 一覧を再取得
+                } else {
+                    showMsg('error', '削除失敗: ' + data.message);
+                    btnEl.disabled = false;
+                    btnEl.textContent = '🗑️ 削除';
+                }
+            } catch (err) {
+                showMsg('error', '通信エラー: ' + err.message);
+                btnEl.disabled = false;
+                btnEl.textContent = '🗑️ 削除';
+            }
+        }
+
+        // ==============================
+        // ユーティリティ
+        // ==============================
+        function showMsg(type, text) {
+            const area = document.getElementById('msgArea');
+            area.innerHTML = `<div class="msg ${type}">${text}</div>`;
+            if (type === 'success') {
+                setTimeout(() => { area.innerHTML = ''; }, 5000);
+            }
+        }
+
+        function escapeHtml(str) {
+            const d = document.createElement('div');
+            d.textContent = str;
+            return d.innerHTML;
+        }
+    </script>
+</body>
+
+</html>

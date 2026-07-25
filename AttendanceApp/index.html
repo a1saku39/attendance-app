@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>勤怠管理アプリ</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                <button id="menuBtn" class="menu-button" style="position: relative;">
+                    <span class="menu-icon">☰</span>
+                    <span class="menu-text">メニュー</span>
+                    <span id="menuDot" class="menu-dot"></span>
+                </button>
+                <h1 style="margin: 0; font-size: 1.5rem;">勤怠管理</h1>
+                <div style="width: 80px;"></div>
+            </div>
+            <p id="current-time">--:--</p>
+        </header>
+
+        <!-- Sidebar Menu -->
+        <div id="overlay" class="overlay"></div>
+        <nav id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <div>
+                    <h2>メニュー</h2>
+                    <span id="menuVersion" style="font-size: 11px; color: #9ca3af; font-weight: 400;"></span>
+                </div>
+                <button id="closeMenuBtn" class="close-menu-btn">×</button>
+            </div>
+            <div class="menu-links">
+                <div class="menu-group">
+                    <div class="menu-group-title" onclick="toggleMenuGroup(this)">
+                        <span>勤怠・業務</span>
+                        <span class="toggle-icon">▼</span>
+                    </div>
+                    <div class="menu-group-items">
+                        <a href="MonthlyReview.html" class="menu-link">
+                            <span class="icon">📋</span> 月次確認・承認
+                        </a>
+                        <a href="SearchData.html" class="menu-link" style="color: #4b5563;">
+                            <span class="icon">🔍</span> 打刻データ検索
+                        </a>
+                        <a href="Calendar.html" class="menu-link">
+                            <span class="icon">📅</span> カレンダー確認
+                        </a>
+                        <a href="DailyReport.html" class="menu-link" style="color: #4b5563;">
+                            <span class="icon">📝</span> 日報
+                        </a>
+                        <a href="CompensatoryLeave.html" class="menu-link" style="color: #4b5563;">
+                            <span class="icon">🏖️</span> 代休管理
+                        </a>
+                        <!-- Timeline temporarily hidden
+                        <a href="Timeline.html" class="menu-link">
+                            <span class="icon">⏱️</span> タイムライン
+                        </a>
+                        -->
+                    </div>
+                </div>
+
+                <div class="menu-group">
+                    <div class="menu-group-title" onclick="toggleMenuGroup(this)">
+                        <span>社内コミュニケーション</span>
+                        <span class="toggle-icon">▼</span>
+                    </div>
+                    <div class="menu-group-items">
+                        <a href="Board.html" class="menu-link" style="color: #4b5563;">
+                            <span class="icon">📌</span> 掲示板・お知らせ
+                        </a>
+                        <a href="Message.html" class="menu-link" style="color: #4b5563; position: relative;">
+                            <span class="icon">✉️</span> 個別メッセージ
+                            <span id="msgUnreadBadge" class="menu-badge" style="display:none;">0</span>
+                        </a>
+                        <a href="Survey.html" class="menu-link" style="color: #2563eb; font-weight: bold;">
+                            <span class="icon">📝</span> 社内アンケート
+                        </a>
+                        <a href="Proposal.html" class="menu-link" style="color: #2563eb; font-weight: bold;">
+                            <span class="icon">💡</span> 改善提案
+                        </a>
+                        <a href="Feedback.html" class="menu-link" style="color: #4b5563;">
+                            <span class="icon">💡</span> 要望・フィードバック (旧)
+                        </a>
+                    </div>
+                </div>
+
+                <div class="menu-group">
+                    <div class="menu-group-title" onclick="toggleMenuGroup(this)">
+                        <span>管理・設定</span>
+                        <span class="toggle-icon">▼</span>
+                    </div>
+                    <div class="menu-group-items">
+                        <a href="ManagerDashboard.html" class="menu-link">
+                            <span class="icon">👑</span> 承認ダッシュボード
+                        </a>
+                        <a href="AdminDashboard.html" id="menu-admin-dashboard" class="menu-link admin-only" style="color: #dc2626; font-weight: bold; display: none;">
+                            <span class="icon">📈</span> 総合ダッシュボード
+                        </a>
+                        <a href="HolidaySettings.html" class="menu-link" style="color: #4b5563;">
+                            <span class="icon">📅</span> 年間休日設定
+                        </a>
+                        <a href="SurveyAdmin.html" id="menu-survey-admin" class="menu-link admin-only" style="color: #dc2626; font-weight: bold; display: none;">
+                            <span class="icon">⚙️</span> アンケート管理
+                        </a>
+                        <a href="ProposalAdmin.html" id="menu-proposal-admin" class="menu-link admin-only" style="color: #dc2626; font-weight: bold; display: none;">
+                            <span class="icon">⚙️</span> 改善提案管理
+                        </a>
+                    </div>
+                </div>
+
+                <div class="menu-group">
+                    <div class="menu-group-title" onclick="toggleMenuGroup(this)">
+                        <span>サポート</span>
+                        <span class="toggle-icon">▼</span>
+                    </div>
+                    <div class="menu-group-items">
+                        <a href="UserGuide.html" class="menu-link" style="color: #4b5563;">
+                            <span class="icon">📖</span> 使い方・更新情報
+                        </a>
+                        <!-- 社内チャット：将来的に使用予定（現在は無効）
+                        <a href="https://chatapp-v1-1-0wbf.onrender.com/" class="menu-link chat-link">
+                            <span class="icon">💬</span> 社内チャットへ
+                        </a>
+                        -->
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 掲示板バナー（JS で動的に挿入） -->
+        <div id="boardBanner" style="display:none;"></div>
+
+        <main>
+            <div class="user-input-group">
+                <label for="employee-id">社員コード</label>
+                <input type="text" id="employee-id" placeholder="社員コードを入力" inputmode="numeric">
+            </div>
+
+            <div class="user-input-group">
+                <label>日時指定 (任意)</label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="date" id="custom-date" style="flex: 1;">
+                    <input type="time" id="custom-time" style="flex: 1;">
+                </div>
+                <small style="color: #6b7280; font-size: 0.875rem; margin-top: 4px; display: block;">
+                    空欄の場合は現在時刻で記録されます
+                </small>
+            </div>
+
+            <div class="attendance-actions" style="display: flex; gap: 15px; flex-wrap: wrap; align-items: stretch;">
+                <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 8px;">
+                    <button id="clock-in-btn" class="action-btn check-in">
+                        <span class="icon">☀️</span>
+                        出勤
+                    </button>
+                    <div id="clock-in-display"
+                        style="text-align: center; font-size: 0.875rem; color: #059669; font-weight: 600; min-height: 20px;">
+                    </div>
+                </div>
+                <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 8px;">
+                    <button id="clock-out-btn" class="action-btn check-out">
+                        <span class="icon">🌙</span>
+                        退勤
+                    </button>
+                    <div id="clock-out-display"
+                        style="text-align: center; font-size: 0.875rem; color: #dc2626; font-weight: 600; min-height: 20px;">
+                    </div>
+                </div>
+                <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 8px;">
+                    <button id="holiday-btn" class="action-btn holiday">
+                        <span class="icon">🏖️</span>
+                        休日
+                    </button>
+                    <div id="holiday-display"
+                        style="text-align: center; font-size: 0.875rem; color: #0284c7; font-weight: 600; min-height: 20px;">
+                    </div>
+                </div>
+            </div>
+
+            <div class="user-input-group">
+                <label for="remarks">備考</label>
+                <textarea id="remarks" rows="3" placeholder="備考があれば入力してください"></textarea>
+            </div>
+
+            <!-- Holiday Selection Modal -->
+            <div id="holiday-modal" class="modal-overlay" style="display: none;">
+                <div class="modal-content">
+                    <h3>休日の種類を選択</h3>
+                    <div class="modal-actions">
+                        <button id="paid-leave-btn" class="modal-btn primary">有給休暇</button>
+                        <button id="compensatory-leave-btn" class="modal-btn secondary">代休</button>
+                        <button id="cancel-holiday-btn" class="modal-btn cancel">キャンセル</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Compensatory Leave Select Modal -->
+            <div id="compensatory-select-modal" class="modal-overlay" style="display: none;">
+                <div class="modal-content">
+                    <h3>代休を選択してください</h3>
+                    <div style="margin: 15px 0; text-align: left;">
+                        <label for="compensatory-select" style="display:block; margin-bottom: 5px; font-weight: bold; color: #374151;">未取得の代休</label>
+                        <select id="compensatory-select" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #d1d5db; font-size: 1rem;">
+                            <!-- JSで生成 -->
+                        </select>
+                    </div>
+                    <div class="modal-actions">
+                        <button id="confirm-compensatory-btn" class="modal-btn primary">確定</button>
+                        <button id="cancel-compensatory-btn" class="modal-btn cancel">キャンセル</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <details>
+                <summary>設定（管理者用）</summary>
+                <div class="settings">
+                    <label for="gas-url">GAS WebアプリURL</label>
+                    <input type="text" id="gas-url"
+                        placeholder="https://script.google.com/macros/s/AKfycbyGXf1lEV30290VM1wfZ15wBXHtzEmfaes9oRI_9VUqeQt6sBQb8we0HhukxJcl5iMR-w/exec">
+                    <button id="save-settings">保存</button>
+                </div>
+            </details>
+        </footer>
+    </div>
+    <div id="status-message" class="status-message"></div>
+    <script src="script.js"></script>
+</body>
+
+</html>
