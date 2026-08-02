@@ -430,7 +430,7 @@ function updateDailyAttendance(e) {
         logSheet.getRange(foundRow, 10).setValue(remarks); // J:備考
 
         // 勤務時間(I列=9)の計算式再設定
-        logSheet.getRange(foundRow, 9).setFormula('=IF(AND(F' + foundRow + '<>"", H' + foundRow + '<>""), TEXT(H' + foundRow + '-F' + foundRow + ' + IF(H' + foundRow + '<F' + foundRow + ', 1, 0), "[h]:mm"), "")');
+        logSheet.getRange(foundRow, 9).setFormula('=IFERROR(IF(AND(F' + foundRow + '<>"", H' + foundRow + '<>""), TEXT(H' + foundRow + '-F' + foundRow + ' + IF(H' + foundRow + '<F' + foundRow + ', 1, 0), "[h]:mm"), ""), "")');
         
         if(debugSheet) debugSheet.appendRow([new Date(), '既存行を更新しました: ' + foundRow + '行目']);
         
@@ -460,7 +460,7 @@ function updateDailyAttendance(e) {
         logSheet.appendRow(newRowData);
         var newRowNum = logSheet.getLastRow();
         // I列=9.  INPUT: F, H
-        logSheet.getRange(newRowNum, 9).setFormula('=IF(AND(F' + newRowNum + '<>"", H' + newRowNum + '<>""), TEXT(H' + newRowNum + '-F' + newRowNum + ' + IF(H' + newRowNum + '<F' + newRowNum + ', 1, 0), "[h]:mm"), "")');
+        logSheet.getRange(newRowNum, 9).setFormula('=IFERROR(IF(AND(F' + newRowNum + '<>"", H' + newRowNum + '<>""), TEXT(H' + newRowNum + '-F' + newRowNum + ' + IF(H' + newRowNum + '<F' + newRowNum + ', 1, 0), "[h]:mm"), ""), "")');
 
         if(debugSheet) debugSheet.appendRow([new Date(), '新規行を追加しました: ' + newRowNum + '行目']);
     }
@@ -552,38 +552,62 @@ function updateOrAppendRow(sheet, data) {
     
     if (data.action === 'in') {
       sheet.getRange(foundRow, 5).setValue('出勤'); // E:種別
-      sheet.getRange(foundRow, 6).setValue(data.time); // F:出勤時刻
+      var timeCell = sheet.getRange(foundRow, 6); // F:出勤時刻
+      var currentTime = String(timeCell.getValue() || "").trim();
+      var remarksCell = sheet.getRange(foundRow, 10);
+      var currentRemarks = String(remarksCell.getValue() || "");
       
-      // 備考(J列=10)
-      if (data.remarks) {
-        var remarksCell = sheet.getRange(foundRow, 10);
-        var currentRemarks = String(remarksCell.getValue());
-        if (currentRemarks && currentRemarks !== data.remarks && currentRemarks.indexOf(data.remarks) === -1) {
-             remarksCell.setValue(currentRemarks + ' ' + data.remarks);
-        } else if (!currentRemarks) {
-             remarksCell.setValue(data.remarks);
-        }
+      if (currentTime && currentTime !== data.time) {
+          var newRemark = "2回目出勤: " + data.time;
+          if (currentRemarks.indexOf(newRemark) === -1) {
+              currentRemarks = currentRemarks ? currentRemarks + " " + newRemark : newRemark;
+          }
+      } else {
+          timeCell.setValue(data.time);
       }
       
+      // ユーザーからの備考(J列=10)
+      if (data.remarks) {
+          if (currentRemarks && currentRemarks !== data.remarks && currentRemarks.indexOf(data.remarks) === -1) {
+               currentRemarks = currentRemarks ? currentRemarks + ' ' + data.remarks : data.remarks;
+          } else if (!currentRemarks) {
+               currentRemarks = data.remarks;
+          }
+      }
+      remarksCell.setValue(currentRemarks);
+      
       // I列(9): 勤務時間.  F(6), H(8)
-      sheet.getRange(foundRow, 9).setFormula('=IF(AND(F' + foundRow + '<>"", H' + foundRow + '<>""), TEXT(H' + foundRow + '-F' + foundRow + ' + IF(H' + foundRow + '<F' + foundRow + ', 1, 0), "[h]:mm"), "")');
+      sheet.getRange(foundRow, 9).setFormula('=IFERROR(IF(AND(F' + foundRow + '<>"", H' + foundRow + '<>""), TEXT(H' + foundRow + '-F' + foundRow + ' + IF(H' + foundRow + '<F' + foundRow + ', 1, 0), "[h]:mm"), ""), "")');
       debugSheet.appendRow([new Date(), '出勤時刻を記録: ' + data.time]);
     } else if (data.action === 'out') {
       sheet.getRange(foundRow, 7).setValue('退勤'); // G:種別
-      sheet.getRange(foundRow, 8).setValue(data.time); // H:退勤時刻
-      // I列(9): 勤務時間
-      sheet.getRange(foundRow, 9).setFormula('=IF(AND(F' + foundRow + '<>"", H' + foundRow + '<>""), TEXT(H' + foundRow + '-F' + foundRow + ' + IF(H' + foundRow + '<F' + foundRow + ', 1, 0), "[h]:mm"), "")');
-      
-      // 備考(J列=10)
-      if (data.remarks) {
-        var remarksCell = sheet.getRange(foundRow, 10);
-        var currentRemarks = String(remarksCell.getValue());
-        if (currentRemarks && currentRemarks !== data.remarks && currentRemarks.indexOf(data.remarks) === -1) {
-             remarksCell.setValue(currentRemarks + ' ' + data.remarks);
-        } else if (!currentRemarks) {
-             remarksCell.setValue(data.remarks);
-        }
+      var outTimeCell = sheet.getRange(foundRow, 8); // H:退勤時刻
+      var currentOutTime = String(outTimeCell.getValue() || "").trim();
+      var remarksCell = sheet.getRange(foundRow, 10);
+      var currentRemarks = String(remarksCell.getValue() || "");
+
+      if (currentOutTime && currentOutTime !== data.time) {
+          var newRemark = "2回目退勤: " + data.time;
+          if (currentRemarks.indexOf(newRemark) === -1) {
+              currentRemarks = currentRemarks ? currentRemarks + " " + newRemark : newRemark;
+          }
+      } else {
+          outTimeCell.setValue(data.time);
       }
+
+      // I列(9): 勤務時間
+      sheet.getRange(foundRow, 9).setFormula('=IFERROR(IF(AND(F' + foundRow + '<>"", H' + foundRow + '<>""), TEXT(H' + foundRow + '-F' + foundRow + ' + IF(H' + foundRow + '<F' + foundRow + ', 1, 0), "[h]:mm"), ""), "")');
+      
+      // ユーザーからの備考(J列=10)
+      if (data.remarks) {
+          if (currentRemarks && currentRemarks !== data.remarks && currentRemarks.indexOf(data.remarks) === -1) {
+               currentRemarks = currentRemarks ? currentRemarks + ' ' + data.remarks : data.remarks;
+          } else if (!currentRemarks) {
+               currentRemarks = data.remarks;
+          }
+      }
+      remarksCell.setValue(currentRemarks);
+
       debugSheet.appendRow([new Date(), '退勤時刻を記録: ' + data.time]);
     } else if (data.action === 'holiday') {
       var holidayText = data.option === 'paid_leave' ? '有給休暇' : '代休';
@@ -666,7 +690,7 @@ function updateOrAppendRow(sheet, data) {
     
     var newRow = sheet.getLastRow();
     // I列(9)数式
-    sheet.getRange(newRow, 9).setFormula('=IF(AND(F' + newRow + '<>"", H' + newRow + '<>""), TEXT(H' + newRow + '-F' + newRow + ' + IF(H' + newRow + '<F' + newRow + ', 1, 0), "[h]:mm"), "")');
+    sheet.getRange(newRow, 9).setFormula('=IFERROR(IF(AND(F' + newRow + '<>"", H' + newRow + '<>""), TEXT(H' + newRow + '-F' + newRow + ' + IF(H' + newRow + '<F' + newRow + ', 1, 0), "[h]:mm"), ""), "")');
     foundRow = newRow; // For coloring
     debugSheet.appendRow([new Date(), '新規行を追加しました: ' + newRow + '行目']);
   }
@@ -1755,7 +1779,7 @@ function getEmployeeInfo(sheet, id) {
   var lastRow = sheet.getLastRow();
   if (lastRow <= 1) return null;
   
-  var values = sheet.getRange(2, 1, lastRow - 1, 8).getValues(); // H列(印鑑)まで取得想定
+  var values = sheet.getRange(2, 1, lastRow - 1, 9).getValues(); // I列まで取得想定
   
   for (var i = 0; i < values.length; i++) {
     if (String(values[i][0]) === String(id)) {
@@ -1764,7 +1788,7 @@ function getEmployeeInfo(sheet, id) {
         name: values[i][1],
         department: values[i][2],
         firstApprover: values[i][4],
-        stampName: values[i][7] // H列を印鑑データと仮定
+        stampName: values[i][8] // I列を印鑑データと仮定
       };
     }
   }
