@@ -1659,7 +1659,7 @@ function recordApproval(e) {
       if (targetInfo.firstApprover !== approverInfo.name) {
          return ContentService.createTextOutput(JSON.stringify({
           result: 'error',
-          message: 'あなたはこの社員の承認権限を持っていません。社員マスタのE列(第1承認者)を確認してください。\n対象者の第1承認者: "' + targetInfo.firstApprover + '", あなたの名前: "' + approverInfo.name + '"'
+          message: 'あなたはこの社員の承認権限を持っていません。社員マスタのF列(第1承認者)を確認してください。\n対象者の第1承認者: "' + targetInfo.firstApprover + '", あなたの名前: "' + approverInfo.name + '"'
         })).setMimeType(ContentService.MimeType.JSON);
       }
     }
@@ -1787,7 +1787,7 @@ function getEmployeeInfo(sheet, id) {
         id: values[i][0],
         name: values[i][1],
         department: values[i][2],
-        firstApprover: values[i][4],
+        firstApprover: values[i][5], // F列を第1承認者とする
         stampName: values[i][8] // I列を印鑑データと仮定
       };
     }
@@ -2636,15 +2636,15 @@ function getApproverDashboard(e) {
     var approverName = approverInfo.name;
     
     // 2. 部下（承認対象者）を検索
-    // マスタ構造: A:コード, B:氏名, C:部署, D:承認対象部署, E:第1承認者
+    // マスタ構造: A:コード, B:氏名, C:部署, D:承認対象部署, E:??, F:第1承認者
     var lastRow = masterSheet.getLastRow();
     var subordinates = [];
     
     if (lastRow > 1) {
-      var values = masterSheet.getRange(2, 1, lastRow - 1, 5).getValues();
+      var values = masterSheet.getRange(2, 1, lastRow - 1, 6).getValues(); // F列まで取得
       for (var i = 0; i < values.length; i++) {
-        // E列(index 4)が承認者名と一致するか
-        if (values[i][4] === approverName) {
+        // F列(index 5)が承認者名と一致するか
+        if (values[i][5] === approverName) {
           subordinates.push({
             id: values[i][0],
             name: values[i][1],
